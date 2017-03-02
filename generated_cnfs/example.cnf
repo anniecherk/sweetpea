@@ -1,0 +1,19 @@
+c Recall CNF is an AND or ORs
+c so each clause is an "OR" clause (zero = end of clause)
+c "problem" "of type cnf" "6683 variables" "24816 clauses"
+p cnf 6683 24816
+52 0
+-53 0
+55 0
+57 0
+59 0
+387 -417 34 0
+387 -417 410 0
+-410 417 -387 0
+417 -387 34 0
+2537 -410 417 -34 0
+2538 -418 -34 411 0
+2539 -418 388 34 0
+2540 -418 388 411 0
+2541 -411 -388 418 0
+... and so on for another 24000 lines ...

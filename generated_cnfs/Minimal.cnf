@@ -1,0 +1,15 @@
+c Feature: Color
+c    Level: Red
+c    Level: Blue
+c
+c Experiment:
+c    2 x Fully_Cross(Word, Color)
+c
+c (any ordering of Red, Red, Blue, Blue)
+c
+c Sample target output:
+c [Color: Red, Color: Blue, Color: Red, Color: Blue]
+c
+c "problem" "problem type" "numb vars" "numb clauses"
+p cnf 4 10
+c list of clauses terminated in '0's
