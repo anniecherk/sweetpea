@@ -1,6 +1,6 @@
 module Main where
 
-import Lib
+import Compiler
 
 main :: IO ()
-main = someFunc
+main = putStr $ showCNF [[1, 2, 3], [4, 5, 6]]
