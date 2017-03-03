@@ -1,5 +1,5 @@
 module Compiler
-( CNF, ClauseSummary, showCNF
+( CNF, showDIMACS, showCNF, halfAdder
 )
 where
 
@@ -10,13 +10,22 @@ import Data.List
 
 
 
+-- putStr $ showDIMACS (halfAdder 1 2 2 []) 3
+
+
+
+
+
+
+
+
 -- AND of ORs
 type CNF = [[Int]]
-data ClauseSummary = State CNF Int deriving (Eq)
-instance Show ClauseSummary where
-  show (State cnf numVars) = "p cnf " ++ show numVars ++ " " ++ show (length cnf)
-    ++ "\n" ++ showCNF cnf
 
+
+showDIMACS :: CNF -> Int -> String
+showDIMACS cnf nVars = "p cnf " ++ show nVars ++ " " ++ show (length cnf)
+  ++ "\n" ++ showCNF cnf
 
 showCNF :: CNF -> String
 showCNF cnf = foldl(\acc andClause -> acc ++ -- bizarre head/tail splitting because want no leading space
@@ -26,22 +35,35 @@ showCNF cnf = foldl(\acc andClause -> acc ++ -- bizarre head/tail splitting beca
 andCNF :: [Int] -> CNF
 andCNF input = map (\x -> [x]) input
 
+-- not A or not B
+nAndCNF :: Int -> Int -> CNF
+nAndCNF a b = [[-a, -b]]
+
 -- A xor B
 -- (A or B) and (-A or -B)
 xorCNF :: Int -> Int -> CNF
 xorCNF a b = [[a, b], [-a, -b]]
 
-       --     a      b     accum
-halfAdder :: (Int -> Int -> CNF) -> CNF
-halfAdder a b accum =
-  where numVars = (length . nub . concat) accum
-        cID  = numVars + 1
-        sID  = numVars + 1
+xNorCNF :: Int -> Int -> CNF
+xNorCNF a b = [[a, -b], [-a, b]]
+
+
+distribute :: Int -> CNF -> CNF
+distribute inputID value = map (\orClause -> inputID : orClause) value
+
+       --     a      b    nVars  accum
+halfAdder :: Int -> Int -> Int -> CNF -> CNF
+halfAdder a b numVars accum = accum ++ cTrue ++ cFalse
+  where cID  = numVars + 1
         cVal = andCNF [a, b]
-        sVal = xorCNF a b
+        cNegVal = nAndCNF a b
+        cTrue = (andCNF [cID]) ++ cVal
+        cFalse = (andCNF [-cID]) ++ cNegVal
+
+        -- sID  = numVars + 1
+        -- sVal = xorCNF a b
 
 
-halfAdder _ = []
 --     cID = numVars + 1 -- "make" two more vars
 --     sID = numVars + 2
 --     cVal = And [Var a, Var b]
