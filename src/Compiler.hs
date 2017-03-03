@@ -1,9 +1,9 @@
 module Compiler
-( CNF, showCNF
+( CNF, ClauseSummary, showCNF
 )
 where
 
-
+import Data.List
 
 
 
@@ -12,10 +12,45 @@ where
 
 -- AND of ORs
 type CNF = [[Int]]
-data ClauseSummary = State CNF Int deriving (Show, Eq)
+data ClauseSummary = State CNF Int deriving (Eq)
+instance Show ClauseSummary where
+  show (State cnf numVars) = "p cnf " ++ show numVars ++ " " ++ show (length cnf)
+    ++ "\n" ++ showCNF cnf
+
 
 showCNF :: CNF -> String
-showCNF cnf = foldl(\acc andClause -> acc ++ (foldl (\acc or1 -> acc ++ " " ++ show or1) "" andClause) ++ "\n") "" cnf
+showCNF cnf = foldl(\acc andClause -> acc ++ -- bizarre head/tail splitting because want no leading space
+  (foldl (\acc or1 -> acc ++ " " ++ show or1) (show $ head andClause) (tail andClause)) ++ " 0\n") "" cnf
+
+-- wraps in an extra layer: this is just for readabilty
+andCNF :: [Int] -> CNF
+andCNF input = map (\x -> [x]) input
+
+-- A xor B
+-- (A or B) and (-A or -B)
+xorCNF :: Int -> Int -> CNF
+xorCNF a b = [[a, b], [-a, -b]]
+
+       --     a      b     accum
+halfAdder :: (Int -> Int -> CNF) -> CNF
+halfAdder a b accum =
+  where numVars = (length . nub . concat) accum
+        cID  = numVars + 1
+        sID  = numVars + 1
+        cVal = andCNF [a, b]
+        sVal = xorCNF a b
+
+
+halfAdder _ = []
+--     cID = numVars + 1 -- "make" two more vars
+--     sID = numVars + 2
+--     cVal = And [Var a, Var b]
+--     sVal = xOr a b
+--     cTrue = [ Var cID, cVal ]
+--     cFalse = [ Var (-1*cID), negateSAT cVal ]
+--     newConstraints = constraints : negate cTrue : negate cFalse
+--                                  : negate sTrue : negate sFalse
+
 
 
 
@@ -42,9 +77,7 @@ showCNF cnf = foldl(\acc andClause -> acc ++ (foldl (\acc or1 -> acc ++ " " ++ s
 -- negateSAT [xs] = _ -- ??   -- negateSAT (Or xs) = And $ map negateSAT xs
 --
 --
--- halfAdder :: CNF -> CNF -> ClauseSummary -> ClauseSummary
--- halfAdder [] = []
--- halfAdder [[]] = error "matched on list of lists"
+
 
 
 
