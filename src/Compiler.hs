@@ -1,5 +1,5 @@
 module Compiler
-( CNF, showDIMACS, showCNF, halfAdder
+( CNF, showDIMACS, showCNF, halfAdder, parseResult
 )
 where
 
@@ -11,6 +11,8 @@ import Data.List
 
 
 -- putStr $ showDIMACS (halfAdder 1 2 2 []) 3
+-- result <- readFile "generated_cnfs/sample_output.cnf"
+-- parseResult result
 
 
 
@@ -60,6 +62,10 @@ halfAdder a b numVars accum = accum ++ cClauses
         cImpliescVal = distribute c cVal
         cValImpliesC = distribute (-c) cNegVal
         cClauses = cImpliescVal ++ cValImpliesC
+
+
+parseResult :: String -> CNF
+parseResult result = map (\x-> map(\y -> read y ::Int ) $ (init . words . tail) x) $ lines result
 
         -- sID  = numVars + 1
         -- sVal = xorCNF a b
