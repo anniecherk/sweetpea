@@ -53,12 +53,13 @@ distribute inputID value = map (\orClause -> inputID : orClause) value
 
        --     a      b    nVars  accum
 halfAdder :: Int -> Int -> Int -> CNF -> CNF
-halfAdder a b numVars accum = accum ++ cTrue ++ cFalse
-  where cID  = numVars + 1
+halfAdder a b numVars accum = accum ++ cClauses
+  where c  = numVars + 1
         cVal = andCNF [a, b]
         cNegVal = nAndCNF a b
-        cTrue = (andCNF [cID]) ++ cVal
-        cFalse = (andCNF [-cID]) ++ cNegVal
+        cImpliescVal = distribute c cVal
+        cValImpliesC = distribute (-c) cNegVal
+        cClauses = cImpliescVal ++ cValImpliesC
 
         -- sID  = numVars + 1
         -- sVal = xorCNF a b
