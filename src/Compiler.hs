@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult,
-andCNF, testHalfAdderDIMACS -- "exploration"
+andCNF, testHalfAdderDIMACS, testFullAdderDIMACS -- "exploration"
 )
 where
 
@@ -79,11 +79,16 @@ distribute inputID = map (\orClause -> inputID : orClause)
 
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node6.html
 
-        --     a      b    cin    nVars  accum
---fullAdder :: Int -> Int -> Int -> Int -> CNF -> CNF
---fullAdder a b cin nVars accum =
+-- creates 5 new variables & ?? clauses.
+        --     a      b    cin    nVars  accum : accum  c    s
+fullAdder :: Int -> Int -> Int -> Int -> CNF -> (CNF, Int, Int)
+fullAdder a b cin nVars accum = (sndAcc, nVars+5, nVars+4) --todo! not quite right! need new C
+  where (fstAcc, fstC, fstS) = halfAdder a b nVars accum -- 2 new vars!
+        (sndAcc, sndC, sndS) = halfAdder fstS cin (nVars+2) fstAcc --nVars+4 is Sout
+        --cout is OR fstC, sndC, which means we need to distribute...
 
 
+-- creates 2 new variables & 6 clauses...
         --     a      b    nVars  accum : accum  c    s
 halfAdder :: Int -> Int -> Int -> CNF -> (CNF, Int, Int)
 halfAdder a b numVars accum =
@@ -112,101 +117,30 @@ computeS numVars a b = sImpliescVal ++ sValImpliesS
         sImpliescVal = distribute (-s) sVal
         sValImpliesS = distribute s sNegVal
 
-
-
--- how to test a half adder:
--- generate the constraint: (halfAdder 1 2 2 [])
--- append each possible combo to the CNF (1 0 \n 2 0 \n)
--- get the DIMACS, run it through the solver
--- check if c & s are what we expect
-
-
+--------- Testing ! ------------------------------------------------------------
 testHalfAdderConstraints :: [CNF]
 testHalfAdderConstraints = map (\x-> adderConstraints ++ andCNF [head x] ++ andCNF [(head . tail) x]) allInputs
   where (adderConstraints, _, _) = halfAdder 1 2 2 []
         allInputs = sequence [[1, -1], [2, -2]] -- 0+0, 0+1, 1+0, 1+1
 
-
 testHalfAdderDIMACS :: [String]
 testHalfAdderDIMACS = map (`showDIMACS` 4) testHalfAdderConstraints
+----
+
+testFullAdderConstraints :: [CNF]
+testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (fstX x) ++ andCNF (thdX x)) allInputs
+  where (adderConstraints, _, _) = fullAdder 1 2 3 3 []
+        allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- 0+0, 0+1, 1+0, 1+1
+        fstX x = [head x]
+        sndX x = [x !! 1]
+        thdX x = [x !! 2] -- now easier by index :)
+
+testFullAdderDIMACS :: [String]
+testFullAdderDIMACS = map (`showDIMACS` 4) testFullAdderConstraints
 
 
-
-
-
-
+--------- Testing ! ------------------------------------------------------------
 
 parseResult :: String -> CNF
 parseResult result = map (map read . init . words . tail) $ lines result
 -- parseResult result = map (map (\y -> read y ::Int ) . (init . words . tail)) $ lines result
-
-
-        -- sID  = numVars + 1
-        -- sVal = xorCNF a b
-
-
---     cID = numVars + 1 -- "make" two more vars
---     sID = numVars + 2
---     cVal = And [Var a, Var b]
---     sVal = xOr a b
---     cTrue = [ Var cID, cVal ]
---     cFalse = [ Var (-1*cID), negateSAT cVal ]
---     newConstraints = constraints : negate cTrue : negate cFalse
---                                  : negate sTrue : negate sFalse
-
-
-
-
--- data Tree a =  Leaf a  |  Tree a :^: Tree a
--- the derived instance of Show is equivalent to
---
--- instance (Show a) => Show (Tree a) where
---
---        showsPrec d (Leaf m) = showParen (d > app_prec) $
---             showString "Leaf " . showsPrec (app_prec+1) m
---          where app_prec = 10
---
---        showsPrec d (u :^: v) = showParen (d > up_prec) $
---             showsPrec (up_prec+1) u .
---             showString " :^: "      .
---             showsPrec (up_prec+1) v
---          where up_prec = 5
-
-
--- negateSAT :: CNF -> CNF
--- negateSAT [] = []
--- negateSAT [[]] = []
--- negateSAT [x:[]] = [[-1*x]]-- negateSAT (And xs) = Or $ map negateSAT xs
--- negateSAT [xs] = _ -- ??   -- negateSAT (Or xs) = And $ map negateSAT xs
---
---
-
-
-
-
--- And [SAT] | Or [SAT] | Var Int deriving (Show, Eq) -- | Not SAT
--- data ConstraintState = State [SAT] Int deriving (Show, Eq)-- but actually only ORs (bc CNF is an AND or ORs)
--- -- Int is the number of vars
---
--- negateSAT :: SAT -> SAT
--- negateSAT (Var x) = Var $ -1*x
--- negateSAT (And xs) = Or $ map negateSAT xs
--- negateSAT (Or xs) = And $ map negateSAT xs
---
--- -- but only takes vars- is this the wrong design?
--- halfAdder :: SAT -> SAT -> ConstraintState -> ConstraintState
--- halfAdder (Var a) (Var b) (State constraints numVars) = (State newConstraints $ numVars + 2)
---     where
---     cID = numVars + 1 -- "make" two more vars
---     sID = numVars + 2
---     cVal = And [Var a, Var b]
---     sVal = xOr a b
---     cTrue = [ Var cID, cVal ]
---     cFalse = [ Var (-1*cID), negateSAT cVal ]
---     newConstraints = constraints : negate cTrue : negate cFalse
---                                  : negate sTrue : negate sFalse
--- halfAdder _ _ _ = error "can't put non-vars into halfAdder"
---
--- xOr :: Int -> Int -> SAT
--- xOr a b = Or [(And [a, b]), (And [-1*a, -1*b])]
--- -- (A or B) and (-A or -B)
