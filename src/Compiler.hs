@@ -99,8 +99,8 @@ computeC numVars a b = cImpliescVal ++ cValImpliesC
   where c  = numVars + 1
         cVal = andCNF [a, b]
         cNegVal = nAndCNF a b
-        cImpliescVal = distribute c cVal
-        cValImpliesC = distribute (-c) cNegVal
+        cImpliescVal = distribute (-c) cVal
+        cValImpliesC = distribute c cNegVal
 
 
     --   numVars    a      b
@@ -109,8 +109,8 @@ computeS numVars a b = sImpliescVal ++ sValImpliesS
   where s  = numVars + 1
         sVal = xorCNF a b
         sNegVal = xNorCNF a b
-        sImpliescVal = distribute s sVal
-        sValImpliesS = distribute (-s) sNegVal
+        sImpliescVal = distribute (-s) sVal
+        sValImpliesS = distribute s sNegVal
 
 
 

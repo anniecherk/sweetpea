@@ -11,6 +11,10 @@ else
     base=""
 fi
 
+#regenerate the tests!!
+stack build
+stack exec cnf
+
 for file in generated_tests/$base*.cnf;
 do
     if [ ! -e $file ]; then
@@ -34,3 +38,5 @@ do
     fi
 
 done
+
+echo -e "${GREEN}Done running tests!${NC}"
