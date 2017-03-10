@@ -29,7 +29,8 @@ do
 
         echo -e "Oh no, ${RED}$name Failed! ${NC}\n    ${GREEN}TRUE${NC}                                                          ${PURPLE}GENERATED${NC}"
         diff -y "$file.sol" <(cryptominisat5_simple "$file.cnf" | tail -n 2)
-        exit 1
+        echo ""
+      #  exit 1
     fi
 
 done

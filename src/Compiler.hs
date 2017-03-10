@@ -102,6 +102,7 @@ computeC numVars a b = cImpliescVal ++ cValImpliesC
         cImpliescVal = distribute c cVal
         cValImpliesC = distribute (-c) cNegVal
 
+
     --   numVars    a      b
 computeS :: Int -> Int -> Int -> CNF
 computeS numVars a b = sImpliescVal ++ sValImpliesS
