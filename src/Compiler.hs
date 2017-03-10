@@ -10,6 +10,18 @@ import Data.List
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
 -- putStr $ showDIMACS (halfAdder 1 2 2 []) 3
 -- result <- readFile "generated_cnfs/sample_output.cnf"
 -- parseResult result
@@ -24,18 +36,22 @@ import Data.List
 -- AND of ORs
 type CNF = [[Int]]
 
+              -- accum, number variables
+data AdderState = State CNF Int
+
 
 showDIMACS :: CNF -> Int -> String
 showDIMACS cnf nVars = "p cnf " ++ show nVars ++ " " ++ show (length cnf)
   ++ "\n" ++ showCNF cnf
 
 showCNF :: CNF -> String
-showCNF cnf = foldl(\acc andClause -> acc ++ -- bizarre head/tail splitting because want no leading space
-  (foldl (\acc or1 -> acc ++ " " ++ show or1) (show $ head andClause) (tail andClause)) ++ " 0\n") "" cnf
+showCNF = foldl(\acc andClause -> acc ++ -- bizarre head/tail splitting because want no leading space
+  foldl (\acc or1 -> acc ++ " " ++ show or1) (show $ head andClause) (tail andClause) ++ " 0\n") ""
 
 -- wraps in an extra layer: this is just for readabilty
 andCNF :: [Int] -> CNF
-andCNF input = map (\x -> [x]) input
+andCNF = return --(: [])
+
 
 -- not A or not B
 nAndCNF :: Int -> Int -> CNF
@@ -51,21 +67,52 @@ xNorCNF a b = [[a, -b], [-a, b]]
 
 
 distribute :: Int -> CNF -> CNF
-distribute inputID value = map (\orClause -> inputID : orClause) value
+distribute inputID = map (\orClause -> inputID : orClause)
 
-       --     a      b    nVars  accum
-halfAdder :: Int -> Int -> Int -> CNF -> CNF
-halfAdder a b numVars accum = accum ++ cClauses
+
+
+-- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node6.html
+
+        --     a      b    cin    nVars  accum
+ -- fullAdder :: Int -> Int -> Int -> Int -> CNF -> CNF
+ -- fullAdder a b cin nVars accum =
+
+
+        --     a      b    nVars  accum : accum  c    s
+halfAdder :: Int -> Int -> Int -> CNF -> (CNF, Int, Int)
+halfAdder a b numVars accum =
+    (accum ++
+    computeC numVars a b ++
+    computeS (numVars+1) a b, numVars+1, numVars+2)
+
+
+
+    --   numVars    a      b
+computeC :: Int -> Int -> Int -> CNF
+computeC numVars a b = cImpliescVal ++ cValImpliesC
   where c  = numVars + 1
         cVal = andCNF [a, b]
         cNegVal = nAndCNF a b
         cImpliescVal = distribute c cVal
         cValImpliesC = distribute (-c) cNegVal
-        cClauses = cImpliescVal ++ cValImpliesC
+
+    --   numVars    a      b
+computeS :: Int -> Int -> Int -> CNF
+computeS numVars a b = sImpliescVal ++ sValImpliesS
+  where s  = numVars + 1
+        sVal = xorCNF a b
+        sNegVal = xNorCNF a b
+        sImpliescVal = distribute s sVal
+        sValImpliesS = distribute (-s) sNegVal
+
+
+
 
 
 parseResult :: String -> CNF
-parseResult result = map (\x-> map(\y -> read y ::Int ) $ (init . words . tail) x) $ lines result
+parseResult result = map (map read . init . words . tail) $ lines result
+-- parseResult result = map (map (\y -> read y ::Int ) . (init . words . tail)) $ lines result
+
 
         -- sID  = numVars + 1
         -- sVal = xorCNF a b
