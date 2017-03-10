@@ -1,5 +1,6 @@
 module Compiler
-( CNF, showDIMACS, showCNF, halfAdder, parseResult
+( CNF, showDIMACS, showCNF, halfAdder, parseResult,
+andCNF, testHalfAdderDIMACS -- "exploration"
 )
 where
 
@@ -19,12 +20,17 @@ import Data.List
 
 
 
-
+-- (a, b, c) = halfAdder 1 2 2 []
+-- putStr $ showDIMACS a 4
 
 
 -- putStr $ showDIMACS (halfAdder 1 2 2 []) 3
 -- result <- readFile "generated_cnfs/sample_output.cnf"
 -- parseResult result
+
+
+
+
 
 
 
@@ -74,8 +80,8 @@ distribute inputID = map (\orClause -> inputID : orClause)
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node6.html
 
         --     a      b    cin    nVars  accum
- -- fullAdder :: Int -> Int -> Int -> Int -> CNF -> CNF
- -- fullAdder a b cin nVars accum =
+--fullAdder :: Int -> Int -> Int -> Int -> CNF -> CNF
+--fullAdder a b cin nVars accum =
 
 
         --     a      b    nVars  accum : accum  c    s
@@ -104,6 +110,26 @@ computeS numVars a b = sImpliescVal ++ sValImpliesS
         sNegVal = xNorCNF a b
         sImpliescVal = distribute s sVal
         sValImpliesS = distribute (-s) sNegVal
+
+
+
+-- how to test a half adder:
+-- generate the constraint: (halfAdder 1 2 2 [])
+-- append each possible combo to the CNF (1 0 \n 2 0 \n)
+-- get the DIMACS, run it through the solver
+-- check if c & s are what we expect
+
+
+testHalfAdderConstraints :: [CNF]
+testHalfAdderConstraints = map (\x-> adderConstraints ++ andCNF [head x] ++ andCNF [(head . tail) x]) allInputs
+  where (adderConstraints, _, _) = halfAdder 1 2 2 []
+        allInputs = sequence [[1, -1], [2, -2]] -- 0+0, 0+1, 1+0, 1+1
+
+
+testHalfAdderDIMACS :: [String]
+testHalfAdderDIMACS = map (`showDIMACS` 4) testHalfAdderConstraints
+
+
 
 
 
