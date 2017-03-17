@@ -46,7 +46,42 @@ Basically you've got a boolean string with n numbers, and you're going to split 
 
 #### From Circuit to Solver
 
-# Syntax
 
 # Generalizing to Arbitrary First-Order Logic
+
+#### More complicated data objects
+
+#### Arbitrary first order logic
+
+# Syntax
+I've included this section detailing the syntax of the input & output formats for completeness, but it isn't the interesting part. You can checkout the full code listing (including more examples) on github.
+
+#### Architecture & Representation
+Once more, the goal is to compile from a human-readable representation of first-order logic constraints to CNF (and back again!) We split our pipeline into 3 natural sections: the front-end takes our input target to a comfortable internal representation (IR), the middle-end changes the IR to cast the first-order logic as cardinality constraints, the back-end emits the corresponding DIMACS CNF.
+
+#### Front-End
+
+The input format is whatever I want it to be. I tailored it to the domain I'm working in, but if I wanted to work in a different domain, all I would need to do is update the parser to understand the new input format. Here is what our running example looks like in my input format:
+
+```
+Feature: Color
+   Level: Red
+   Level: Blue
+Experiment:
+   4 x Fully_Cross(Color)
+Constraints:
+  #Red=2
+  #Blue=2
+```
+
+
+#### Middle-End
+Not here yet.
+
+#### Back-End
+
+
 # Verification
+
+# Lit Review
+Here's a list of relevant links: 
