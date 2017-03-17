@@ -1,0 +1,64 @@
+carry
+  00 01 11 10
+0  0  0  1  0
+1  0  1  1  1
+c = xy + xz + yz
+c = (x+xz)(y+xz) + yz
+c = (x+x)(x+z)(y+xz) + yz
+c = (x+x)(x+z)(y+x)(y+z) + yz
+c = (x+yz)(x+z+yz)(x+y+yz)(y+z+yz)
+c = (x+y)(x+z)(x+y+z)(x+z+z)(x+y+y)(x+y+z)(y+y+z)(y+z+z)
+c = (x+y)(x+z)(x+y+z)(x+z)(x+y)(x+y+z)(y+z)(y+z)
+c = (x+y)(x+y)(x+y+z)(x+y+z)(x+z)(x+z)(y+z)(y+z)
+c = (x+y)(x+y+z)(x+z)(y+z)
+c = (x+y)(x+z)(y+z)
+
+c
+x y z | c
+------+---
+0 0 0 | 0
+0 0 1 | 0
+0 1 0 | 0
+0 1 1 | 1
+1 0 0 | 0
+1 0 1 | 1
+1 1 0 | 1
+1 1 1 | 1
+
+negation of (x+y)(x+z)(y+z):
+-(x+y) + -(x+z) + -(y+z)
+(-x)(-y) + (-x)(-z) + (-y)(-z)
+(-x + -y)(-x + -z)(-y + -z)
+
+negation
+x y z | c
+------+---
+0 0 0 | 1
+0 0 1 | 1
+0 1 0 | 1
+0 1 1 | 0
+1 0 0 | 1
+1 0 1 | 0
+1 1 0 | 0
+1 1 1 | 0
+
+sum
+  00 01 11 10
+0  0  1  0  1
+1  1  0  1  0
+
+
+
+
+Full adder sum: x XOR y XOR z
+& negation: -(x XOR y XOR z)
+x XOR y = (x+y)(-x + -y) = [[x, y], [-x, -y]]
+-(x XOR y) = (x+ -y)(-x + y) = [[x, -y], [-x, y]]
+
+(x XOR y) XOR z = ((x XOR y) + z)(-(x XOR y) + -z)
+= ((x+y)(-x + -y) + z) ((x+ -y)(-x + y) + -z)
+= ((x+y+z)(-x + -y +z)) ((x+ -y + -z)(-x + y + -z))
+
+= (x+y+z) (-x + -y + z) (x + -y + -z) (-x + y + -z)
+...
+= -x-yz + -xy-z + xyz + x-y-z

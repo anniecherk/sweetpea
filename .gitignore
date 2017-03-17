@@ -1,6 +1,8 @@
 dist
 dist-*
 cabal-dev
+generated_tests/*.cnf
+generated_tests/*.sol
 *.o
 *.hi
 *.chi
