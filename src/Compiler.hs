@@ -167,13 +167,16 @@ solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ "
 -----------
 
 -- RIPPLE CARRY !
--- TODO: generating the as bs input lists might be tricky
+-- TODO: generating the as bs input lists might be tricky.. does it matter?
 testRippleCarryDIMACS :: Int -> [String]
 testRippleCarryDIMACS numDigs = map (`showDIMACS` numVars) testRippleCarryConstraints
   where numVars = 1 + (4*numDigs)
         testRippleCarryConstraints :: [CNF]
         testRippleCarryConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
-          where (adderConstraints, _, _) = rippleCarry [1] [2] 3 3 [] -- [as] [bs] cin #vars accum
+          where as = take numDigs [1..]
+                bs = drop numDigs $ take (2*numDigs) [1..]
+                cin = 2*numDigs + 1
+                (adderConstraints, _, _) = rippleCarry as bs cin cin [] -- [as] [bs] cin #vars accum
                 allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
                 fstX x = [head x] -- these tease apart the above tuples so we can "and" them as assertions
                 sndX x = [x !! 1]
