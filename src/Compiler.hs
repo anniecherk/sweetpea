@@ -155,7 +155,7 @@ testFullAdderDIMACS = map (`showDIMACS` 4) testFullAdderConstraints
 -- s SATISFIABLE
 -- v a b c_in c s 0
 solnFullAdder :: [String]
-solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ (init . tail . show) (computeSolnFullAdder [1, 2, -3]) ++ " 0\n") allInputs
+solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ (init . tail . show) (computeSolnFullAdder x) ++ " 0\n") allInputs
   where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
 
 
