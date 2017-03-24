@@ -148,16 +148,21 @@ testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andC
 testFullAdderDIMACS :: [String]
 testFullAdderDIMACS = map (`showDIMACS` 4) testFullAdderConstraints
 
-
-solnFullAdder :: [String]
-solnFullAdder = ["not implemented"]
+-- s SATISFIABLE
+-- v a b c_in c s 0
+solnFullAdder :: [Int] -> String
+solnFullAdder incoming = "s SATISFIABLE\nv " ++ show (computeSolnFullAdder incoming) ++ " 0"
 
 
 -- sum is positive iff (a+b+c) is odd
 -- carry is positive iff (a+b+c) > 2
---                  [a, b, c] -> "v a b c_in carry sum 0"
-computeSolnFullAdder :: [Int] -> String
-computeSolnFullAdder incoming = "not implemented"
+--                  [a, b, c] -> "a b c_in carry sum"
+computeSolnFullAdder :: [Int] -> [Int]
+computeSolnFullAdder incoming = incoming ++ [c] ++ [s]
+  where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
+        c = if total > 1 then 4 else -4
+        s = if odd total then 5 else -5
+
 
 
 --------- Testing ! ------------------------------------------------------------
