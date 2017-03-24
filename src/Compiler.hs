@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult,
-andCNF, testHalfAdderDIMACS, testFullAdderDIMACS -- "exploration"
+andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, testFullAdderConstraints, solnFullAdder -- "exploration"
 )
 where
 
@@ -138,7 +138,8 @@ testHalfAdderDIMACS = map (`showDIMACS` 4) testHalfAdderConstraints
 ----
 
 testFullAdderConstraints :: [CNF]
-testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
+testFullAdderConstraints =
+  map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
   where (adderConstraints, _, _) = fullAdder 1 2 3 3 [] -- a b c #vars accum
         allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
         fstX x = [head x] -- these tease apart the above tuples so we can "and" them as assertions
@@ -148,10 +149,14 @@ testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andC
 testFullAdderDIMACS :: [String]
 testFullAdderDIMACS = map (`showDIMACS` 4) testFullAdderConstraints
 
+
+
+
 -- s SATISFIABLE
 -- v a b c_in c s 0
-solnFullAdder :: [Int] -> String
-solnFullAdder incoming = "s SATISFIABLE\nv " ++ show (computeSolnFullAdder incoming) ++ " 0"
+solnFullAdder :: [String]
+solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ show (computeSolnFullAdder x) ++ " 0\n") allInputs
+  where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
 
 
 -- sum is positive iff (a+b+c) is odd

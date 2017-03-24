@@ -3,9 +3,11 @@ module Main where
 import Compiler
 
 main :: IO ()                                                 -- zipping index for file names
-main = do
+main = do --HALF ADDER (they dont have sol's)
   mapM_ (\(i, x) -> writeFile ("generated_tests/halfAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testHalfAdderDIMACS
+  -- FULL ADDER
   mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testFullAdderDIMACS
+  mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".sol") x) $ zip [0..]solnFullAdder
   return ()
 
 
