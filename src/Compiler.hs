@@ -147,7 +147,7 @@ testFullAdderConstraints =
         thdX x = [x !! 2] -- now easier by index :)
 
 testFullAdderDIMACS :: [String]
-testFullAdderDIMACS = map (`showDIMACS` 4) testFullAdderConstraints
+testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
 
 
 
