@@ -1,6 +1,6 @@
 module Compiler
-( CNF, showDIMACS, showCNF, halfAdder, parseResult,
-andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, testFullAdderConstraints, solnFullAdder, computeSolnFullAdder -- "exploration"
+( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry
+, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder -- "exploration"
 )
 where
 
@@ -9,8 +9,6 @@ import Data.List
 
 
 
-
--- note to self! by vis inspection the cnf output files seem to be correct, bug is in constraint gen
 
 
 
@@ -61,10 +59,10 @@ distribute inputID = map (\orClause -> inputID : orClause)
 
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node7.html
 -- Ripple Carry! Wooh!
+-- Just a recursive function to tie the c's together correctly
           --    a's      b's    cin    nVars  accum : accum  c's    s's
 rippleCarry :: [Int] -> [Int] -> Int -> Int -> CNF -> (CNF, [Int], [Int])
 rippleCarry as bs cin nVars accum = go (zip as bs) cin nVars (accum, [], [])
-  --(accum, [0], [0])
   where go :: [(Int, Int)] -> Int -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
         go []    _    _     resAccum               = resAccum
         go asbs cin' nVar' (cnfList, cList, sList) = go (tail asbs) cRes (nVar' + 1) (newCnfList, newCs, newSs)
@@ -77,8 +75,6 @@ rippleCarry as bs cin nVars accum = go (zip as bs) cin nVars (accum, [], [])
 
 
 
-
-
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node6.html
 -- creates 2 new variables & 16 clauses.
         --     a      b    cin    nVars  accum : accum  c    s
@@ -86,26 +82,22 @@ fullAdder :: Int -> Int -> Int -> Int -> CNF -> (CNF, Int, Int)
 fullAdder a b cin nVars accum = (sAccum++cAccum, nVars+1, nVars+2) --c is computed first
   where cAccum = computeFullC nVars a b cin
         sAccum = computeFullS (nVars+1) a b cin
-
-
         --   numVars    x      y      z
-computeFullC :: Int -> Int -> Int -> Int -> CNF
-computeFullC nVars x y z = cImpliescVal ++ cValImpliesC
-  where c = nVars + 1
-        cVal = [[x, y], [x, z], [y, z]]  -- see adder-notes for derivations
-        cNegVal = [[-x, -y], [-x, -z], [-y, -z]]
-        cImpliescVal = distribute (-c) cVal
-        cValImpliesC = distribute c cNegVal
-
-
+        computeFullC :: Int -> Int -> Int -> Int -> CNF
+        computeFullC nVars x y z = cImpliescVal ++ cValImpliesC
+          where c = nVars + 1
+                cVal = [[x, y], [x, z], [y, z]]  -- see adder-notes for derivations
+                cNegVal = [[-x, -y], [-x, -z], [-y, -z]]
+                cImpliescVal = distribute (-c) cVal
+                cValImpliesC = distribute c cNegVal
         --   numVars    x      y      z
-computeFullS :: Int -> Int -> Int -> Int -> CNF
-computeFullS nVars x y z = sImpliescVal ++ sValImpliesC
-  where s = nVars + 1
-        sVal = [[-x, -y, z], [-x, y, -z], [x, -y, -z], [x, y, z]] -- see adder-notes for derivations
-        sNegVal = [[-x, -y, -z], [-x, y, z], [x, -y, z], [x, y, -z]]
-        sImpliescVal = distribute (-s) sVal
-        sValImpliesC = distribute s sNegVal
+        computeFullS :: Int -> Int -> Int -> Int -> CNF
+        computeFullS nVars x y z = sImpliescVal ++ sValImpliesC
+          where s = nVars + 1
+                sVal = [[-x, -y, z], [-x, y, -z], [x, -y, -z], [x, y, z]] -- see adder-notes for derivations
+                sNegVal = [[-x, -y, -z], [-x, y, z], [x, -y, z], [x, y, -z]]
+                sImpliescVal = distribute (-s) sVal
+                sValImpliesC = distribute s sNegVal
 
 ---------------
 
@@ -117,49 +109,45 @@ halfAdder a b numVars accum =
     (accum ++
     computeC numVars a b ++
     computeS (numVars+1) a b, numVars+1, numVars+2)
-
-
-
-    --   numVars    a      b
-computeC :: Int -> Int -> Int -> CNF
-computeC numVars a b = cImpliescVal ++ cValImpliesC
-  where c  = numVars + 1
-        cVal = andCNF [a, b]
-        cNegVal = nAndCNF a b
-        cImpliescVal = distribute (-c) cVal
-        cValImpliesC = distribute c cNegVal
-
-
-    --   numVars    a      b
-computeS :: Int -> Int -> Int -> CNF
-computeS numVars a b = sImpliescVal ++ sValImpliesS
-  where s  = numVars + 1
-        sVal = xorCNF a b
-        sNegVal = xNorCNF a b
-        sImpliescVal = distribute (-s) sVal
-        sValImpliesS = distribute s sNegVal
+    where
+          --   numVars    a      b
+      computeC :: Int -> Int -> Int -> CNF
+      computeC numVars a b = cImpliescVal ++ cValImpliesC
+        where c  = numVars + 1
+              cVal = andCNF [a, b]
+              cNegVal = nAndCNF a b
+              cImpliescVal = distribute (-c) cVal
+              cValImpliesC = distribute c cNegVal
+          --   numVars    a      b
+      computeS :: Int -> Int -> Int -> CNF
+      computeS numVars a b = sImpliescVal ++ sValImpliesS
+        where s  = numVars + 1
+              sVal = xorCNF a b
+              sNegVal = xNorCNF a b
+              sImpliescVal = distribute (-s) sVal
+              sValImpliesS = distribute s sNegVal
 
 --------- Testing ! ------------------------------------------------------------
-testHalfAdderConstraints :: [CNF]
-testHalfAdderConstraints = map (\x-> adderConstraints ++ andCNF [head x] ++ andCNF [(head . tail) x]) allInputs
-  where (adderConstraints, _, _) = halfAdder 1 2 2 []
-        allInputs = sequence [[1, -1], [2, -2]] -- 0+0, 0+1, 1+0, 1+1
 
 testHalfAdderDIMACS :: [String]
 testHalfAdderDIMACS = map (`showDIMACS` 4) testHalfAdderConstraints
+  where testHalfAdderConstraints :: [CNF]
+        testHalfAdderConstraints = map (\x-> adderConstraints ++ andCNF [head x] ++ andCNF [(head . tail) x]) allInputs
+          where (adderConstraints, _, _) = halfAdder 1 2 2 []
+                allInputs = sequence [[1, -1], [2, -2]] -- 0+0, 0+1, 1+0, 1+1
 ----
 
-testFullAdderConstraints :: [CNF]
-testFullAdderConstraints =
-  map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
-  where (adderConstraints, _, _) = fullAdder 1 2 3 3 [] -- a b c #vars accum
-        allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
-        fstX x = [head x] -- these tease apart the above tuples so we can "and" them as assertions
-        sndX x = [x !! 1]
-        thdX x = [x !! 2] -- now easier by index :)
+
 
 testFullAdderDIMACS :: [String]
 testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
+  where testFullAdderConstraints :: [CNF]
+        testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
+          where (adderConstraints, _, _) = fullAdder 1 2 3 3 [] -- a b c #vars accum
+                allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
+                fstX x = [head x] -- these tease apart the above tuples so we can "and" them as assertions
+                sndX x = [x !! 1]
+                thdX x = [x !! 2] -- now easier by index :)
 
 
 
@@ -168,17 +156,23 @@ testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
 solnFullAdder :: [String]                        -- this formats the list to be space sep'd
 solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnFullAdder x)) ++ " 0\n") allInputs
   where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
+        -- sum is positive iff (a+b+c) is odd
+        -- carry is positive iff (a+b+c) > 2
+        --                  [a, b, c] -> "a b c_in carry sum"
+        computeSolnFullAdder :: [Int] -> [Int]
+        computeSolnFullAdder incoming = incoming ++ [c] ++ [s]
+          where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
+                c = if total > 1 then 4 else -4
+                s = if odd total then 5 else -5
+-----------
 
+-- RIPPLE CARRY !
 
--- sum is positive iff (a+b+c) is odd
--- carry is positive iff (a+b+c) > 2
---                  [a, b, c] -> "a b c_in carry sum"
-computeSolnFullAdder :: [Int] -> [Int]
-computeSolnFullAdder incoming = incoming ++ [c] ++ [s]
-  where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
-        c = if total > 1 then 4 else -4
-        s = if odd total then 5 else -5
+testRippleCarryDIMACS :: Int -> [String]
+testRippleCarryDIMACS numDigs = ["not implemented"]
 
+solnRippleCarry :: Int -> [String]
+solnRippleCarry numDigs = ["not implemented"]
 
 
 --------- Testing ! ------------------------------------------------------------
