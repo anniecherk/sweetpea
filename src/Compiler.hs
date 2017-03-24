@@ -10,14 +10,7 @@ import Data.List
 
 
 
--- (a, b, c) = halfAdder 1 2 2 []
--- putStr $ showDIMACS a 4
-
-
--- putStr $ showDIMACS (halfAdder 1 2 2 []) 3
--- result <- readFile "generated_cnfs/sample_output.cnf"
--- parseResult result
-
+-- note to self! by vis inspection the cnf output files seem to be correct, bug is in constraint gen
 
 
 
@@ -81,7 +74,7 @@ computeFullC :: Int -> Int -> Int -> Int -> CNF
 computeFullC nVars x y z = cImpliescVal ++ cValImpliesC
   where c = nVars + 1
         cVal = [[x, y], [x, z], [y, z]]  -- see adder-notes for derivations
-        cNegVal = [[x, y], [x, z], [y, z]]
+        cNegVal = [[-x, -y], [-x, -z], [-y, -z]]
         cImpliescVal = distribute (-c) cVal
         cValImpliesC = distribute c cNegVal
 
@@ -155,7 +148,7 @@ testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
 -- s SATISFIABLE
 -- v a b c_in c s 0
 solnFullAdder :: [String]
-solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ (init . tail . show) (computeSolnFullAdder x) ++ " 0\n") allInputs
+solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnFullAdder x)) ++ " 0\n") allInputs
   where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
 
 
