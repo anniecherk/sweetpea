@@ -172,7 +172,8 @@ testRippleCarryDIMACS :: Int -> [String]
 testRippleCarryDIMACS numDigs = map (`showDIMACS` numVars) testRippleCarryConstraints
   where numVars = 1 + (4*numDigs)
         testRippleCarryConstraints :: [CNF]
-        testRippleCarryConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
+        testRippleCarryConstraints = map (\x -> foldl (\acc y -> acc ++ andCNF [y]) adderConstraints x) allInputs
+          -- map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
           where as = take numDigs [1..]
                 bs = drop numDigs $ take (2*numDigs) [1..]
                 cin = 2*numDigs + 1
