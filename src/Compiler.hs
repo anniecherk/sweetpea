@@ -10,16 +10,6 @@ import Data.List
 
 
 
-
-
-
-
-
-
-
-
-
-
 -- (a, b, c) = halfAdder 1 2 2 []
 -- putStr $ showDIMACS a 4
 
@@ -82,10 +72,31 @@ distribute inputID = map (\orClause -> inputID : orClause)
 -- creates 5 new variables & ?? clauses.
         --     a      b    cin    nVars  accum : accum  c    s
 fullAdder :: Int -> Int -> Int -> Int -> CNF -> (CNF, Int, Int)
-fullAdder a b cin nVars accum = (sndAcc, nVars+5, nVars+4) --todo! not quite right! need new C
-  where (fstAcc, fstC, fstS) = halfAdder a b nVars accum -- 2 new vars!
-        (sndAcc, sndC, sndS) = halfAdder fstS cin (nVars+2) fstAcc --nVars+4 is Sout
-        --cout is OR fstC, sndC, which means we need to distribute...
+fullAdder a b cin nVars accum = (sAccum++cAccum, nVars+1, nVars+2) --c is computed first
+  where cAccum = computeFullC nVars a b cin
+        sAccum = computeFullS (nVars+1) a b cin
+
+
+        --   numVars    x      y      z
+computeFullC :: Int -> Int -> Int -> Int -> CNF
+computeFullC nVars x y z = cImpliescVal ++ cValImpliesC
+  where c = nVars + 1
+        cVal = [[x, y], [x, z], [y, z]]  -- see adder-notes for derivations
+        cNegVal = [[x, y], [x, z], [y, z]]
+        cImpliescVal = distribute (-c) cVal
+        cValImpliesC = distribute c cNegVal
+
+
+        --   numVars    x      y      z
+computeFullS :: Int -> Int -> Int -> Int -> CNF
+computeFullS nVars x y z = sImpliescVal ++ sValImpliesC
+  where s = nVars + 1
+        sVal = [[-x, -y, z], [-x, y, -z], [x, -y, -z], [x, y, z]] -- see adder-notes for derivations
+        sNegVal = [[-x, -y, -z], [-x, y, z], [x, -y, z], [x, y, -z]]
+        sImpliescVal = distribute (-s) sVal
+        sValImpliesC = distribute s sNegVal
+
+---------------
 
 
 -- creates 2 new variables & 6 clauses...

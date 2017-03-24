@@ -26,7 +26,7 @@ do
     name=${file#generated_tests/}
 
 
-    diff "$file.sol" <(cryptominisat5_simple "$file.cnf" | tail -n 2) > /dev/null
+    diff "$file.sol" <(cryptominisat5_simple --verb=0 "$file.cnf") > /dev/null
 
     if [ $? -ne 0 ];
     then

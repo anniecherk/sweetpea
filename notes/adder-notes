@@ -1,3 +1,15 @@
+CLOSED FORMS:
+
+s = [[-a, -b, c], [-a, b, -c], [a, -b, -c], [a, b, c]]
+NOT s = [[-a, -b, -c], [-a, b, c], [a, -b, c], [a, b, -c]]
+c = (x+y)(x+z)(y+z)
+NOT c = (-x + -y)(-x + -z)(-y + -z)
+
+------
+
+
+
+
 carry
   00 01 11 10
 0  0  0  1  0
@@ -52,6 +64,7 @@ sum
 
 Full adder sum: x XOR y XOR z
 & negation: -(x XOR y XOR z)
+
 x XOR y = (x+y)(-x + -y) = [[x, y], [-x, -y]]
 -(x XOR y) = (x+ -y)(-x + y) = [[x, -y], [-x, y]]
 
@@ -59,6 +72,12 @@ x XOR y = (x+y)(-x + -y) = [[x, y], [-x, -y]]
 = ((x+y)(-x + -y) + z) ((x+ -y)(-x + y) + -z)
 = ((x+y+z)(-x + -y +z)) ((x+ -y + -z)(-x + y + -z))
 
-= (x+y+z) (-x + -y + z) (x + -y + -z) (-x + y + -z)
-...
-= -x-yz + -xy-z + xyz + x-y-z
+s = (x+y+z) (-x + -y + z) (x + -y + -z) (-x + y + -z)
+
+
+
+not s = -[ (x+y+z) (-x + -y + z) (x + -y + -z) (-x + y + -z) ]
+= -(x+y+z) + -(-x + -y + z) + -(x + -y + -z) + -(-x + y + -z)
+= (-x)(-y)(-z) + (x)(y)(-z) + (-x)(y)(z) + (x)(-y)(z)
+= (-x)(-y)(-z) + (-x)(y)(z) + (x)(-y)(z) + (x)(y)(-z)
+= (-x)[(-y)(-z) + (y)(z)] + (x)[(-y)(z) + (y)(-z)]

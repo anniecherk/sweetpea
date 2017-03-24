@@ -41,8 +41,19 @@ Okay, so first we should talk about popcount, but the example on wikipedia is re
 Basically you've got a boolean string with n numbers, and you're going to split that in half into 2 strings with n/2 numbers. In the wiki example they make a boolean mask by bitshifting to select every other number, but the way you split the string doesn't actually matter. Then, you'll add those 2 n/2 numbers (using a n/2 sized adder!) resulting in an n/2 sum. Then repeat on the sum- divide into 2 n/4 length strings and add! Continue this until you have a total cumulative sum. Perfect.
 
 #### Half Adders, Full Adders & Ripple Carry (oh my!)
+**Half Adders**
+Okay, so let's take a moment to talk about how adder circuits work. Let's start simple: a half-adder takes two inputs A & B, and adds them, producing a sum S and a carry C. Adders are often represented with diagrams because they correspond to actual physical gates in hardware, but we just care about the logic. We can also confirm that the equations for the output bits are true by consulting a truth table:
+
+Diagrams & Equation & Truth Table
+
+**Full Adders**
+Diagrams & Equation & Truth Table
+
+**Ripple Carry Adders**
+Diagrams & Equation & Truth Table
 
 #### Pop Countin' with a Ripple Carry Adder
+Ok
 
 #### From Circuit to Solver
 
@@ -84,4 +95,4 @@ Not here yet.
 # Verification
 
 # Lit Review
-Here's a list of relevant links: 
+Here's a list of relevant links:
