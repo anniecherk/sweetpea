@@ -59,6 +59,25 @@ distribute :: Int -> CNF -> CNF
 distribute inputID = map (\orClause -> inputID : orClause)
 
 
+-- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node7.html
+-- Ripple Carry! Wooh!
+          --    a's      b's    cin    nVars  accum : accum  c's    s's
+rippleCarry :: [Int] -> [Int] -> Int -> Int -> CNF -> (CNF, [Int], [Int])
+rippleCarry as bs cin nVars accum = go (zip as bs) cin nVars (accum, [], [])
+  --(accum, [0], [0])
+  where go :: [(Int, Int)] -> Int -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
+        go []    _    _     resAccum               = resAccum
+        go asbs cin' nVar' (cnfList, cList, sList) = go (tail asbs) cRes (nVar' + 1) (newCnfList, newCs, newSs)
+          where a = fst $ head asbs
+                b = snd $ head asbs
+                (cnfRes, cRes, sRes) = fullAdder a b cin' nVar' cnfList
+                newCnfList = cnfList ++ cnfRes
+                newCs = cList ++ [cRes]
+                newSs = sList ++ [sRes]
+
+
+
+
 
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node6.html
 -- creates 2 new variables & 16 clauses.
@@ -144,10 +163,9 @@ testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
 
 
 
-
 -- s SATISFIABLE
 -- v a b c_in c s 0
-solnFullAdder :: [String]
+solnFullAdder :: [String]                        -- this formats the list to be space sep'd
 solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnFullAdder x)) ++ " 0\n") allInputs
   where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
 
