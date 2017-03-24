@@ -68,8 +68,7 @@ distribute inputID = map (\orClause -> inputID : orClause)
 
 
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node6.html
-
--- creates 5 new variables & ?? clauses.
+-- creates 2 new variables & 16 clauses.
         --     a      b    cin    nVars  accum : accum  c    s
 fullAdder :: Int -> Int -> Int -> Int -> CNF -> (CNF, Int, Int)
 fullAdder a b cin nVars accum = (sAccum++cAccum, nVars+1, nVars+2) --c is computed first
@@ -139,15 +138,26 @@ testHalfAdderDIMACS = map (`showDIMACS` 4) testHalfAdderConstraints
 ----
 
 testFullAdderConstraints :: [CNF]
-testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (fstX x) ++ andCNF (thdX x)) allInputs
-  where (adderConstraints, _, _) = fullAdder 1 2 3 3 []
-        allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- 0+0, 0+1, 1+0, 1+1
-        fstX x = [head x]
+testFullAdderConstraints = map (\x-> adderConstraints ++ andCNF (fstX x) ++ andCNF (sndX x) ++ andCNF (thdX x)) allInputs
+  where (adderConstraints, _, _) = fullAdder 1 2 3 3 [] -- a b c #vars accum
+        allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
+        fstX x = [head x] -- these tease apart the above tuples so we can "and" them as assertions
         sndX x = [x !! 1]
         thdX x = [x !! 2] -- now easier by index :)
 
 testFullAdderDIMACS :: [String]
 testFullAdderDIMACS = map (`showDIMACS` 4) testFullAdderConstraints
+
+
+solnFullAdder :: [String]
+solnFullAdder = ["not implemented"]
+
+
+-- sum is positive iff (a+b+c) is odd
+-- carry is positive iff (a+b+c) > 2
+--                  [a, b, c] -> "v a b c_in carry sum 0"
+computeSolnFullAdder :: [Int] -> String
+computeSolnFullAdder incoming = "not implemented"
 
 
 --------- Testing ! ------------------------------------------------------------
