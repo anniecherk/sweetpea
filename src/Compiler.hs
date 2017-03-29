@@ -1,5 +1,5 @@
 module Compiler
-( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry
+( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder -- "exploration"
 )
 where
@@ -65,7 +65,7 @@ rippleCarry :: [Int] -> [Int] -> Int -> Int -> CNF -> (CNF, [Int], [Int])
 rippleCarry as bs cin nVars accum = go (zip as bs) cin nVars (accum, [], [])
   where go :: [(Int, Int)] -> Int -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
         go []    _    _     resAccum               = resAccum
-        go asbs cin' nVar' (cnfList, cList, sList) = go (tail asbs) cRes (nVar' + 1) (newCnfList, newCs, newSs)
+        go asbs cin' nVar' (cnfList, cList, sList) = go (tail asbs) cRes (nVar' + 2) (newCnfList, newCs, newSs)
           where a = fst $ head asbs
                 b = snd $ head asbs
                 (cnfRes, cRes, sRes) = fullAdder a b cin' nVar' cnfList
@@ -156,14 +156,16 @@ testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
 solnFullAdder :: [String]                        -- this formats the list to be space sep'd
 solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnFullAdder x)) ++ " 0\n") allInputs
   where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
-        -- sum is positive iff (a+b+c) is odd
-        -- carry is positive iff (a+b+c) > 2
-        --                  [a, b, c] -> "a b c_in carry sum"
-        computeSolnFullAdder :: [Int] -> [Int]
-        computeSolnFullAdder incoming = incoming ++ [c] ++ [s]
-          where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
-                c = if total > 1 then 4 else -4
-                s = if odd total then 5 else -5
+
+
+-- sum is positive iff (a+b+c) is odd
+-- carry is positive iff (a+b+c) > 2
+--                  [a, b, c] -> "a b c_in carry sum"
+computeSolnFullAdder :: [Int] -> [Int]
+computeSolnFullAdder incoming = incoming ++ [c] ++ [s]
+  where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
+        c = if total > 1 then 4 else -4
+        s = if odd total then 5 else -5
 -----------
 
 -- RIPPLE CARRY !
@@ -183,16 +185,17 @@ testRippleCarryDIMACS numDigs = map (`showDIMACS` numVars) testRippleCarryConstr
 solnRippleCarry :: Int -> [String]
 solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnRippleCarry x)) ++ " 0\n") allInputs
   where numVars = 1 + (4*numDigs)
-        (as, bs, cin) = rippleCarryAsBsCin numDigs
-        allInputs = mapM (\x -> [x, -x]) [1..cin] -- generates all input combos (in counting order)
-        -- sum is positive iff (a+b+c) is odd
-        -- carry is positive iff (a+b+c) > 2
-        --                  [a, b, c] -> "a b c_in carry sum"
-        computeSolnRippleCarry :: [Int] -> [Int]
-        computeSolnRippleCarry incoming = incoming ++ [c] ++ [s]
-          where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
-                c = if total > 1 then 4 else -4
-                s = if odd total then 5 else -5
+        (as, bs, cin) = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..cin]
+        --allInputs = mapM (\x -> [x, -x]) [1..cin] -- generates all input combos (in counting order)
+
+        -- -- sum is positive iff (a+b+c) is odd
+        -- -- carry is positive iff (a+b+c) > 2
+        -- --                  [a, b, c] -> "a b c_in carry sum"
+computeSolnRippleCarry :: [Int] -> [Int]
+computeSolnRippleCarry incoming = incoming ++ [c] ++ [s]
+  where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
+        c = if total > 1 then 4 else -4
+        s = if odd total then 5 else -5
 
                 -- we get in a list of numbers that's pos/ neg
                 -- we have a key to which numbers are a's, which are b's
@@ -204,6 +207,14 @@ rippleCarryAsBsCin numDigs = (as, bs, cin)
   where as = take numDigs [1..]
         bs = drop numDigs $ take (2*numDigs) [1..]
         cin = 2*numDigs + 1
+
+
+rippleCarryAsBsCinList :: [Int] -> ([Int], [Int], Int)
+rippleCarryAsBsCinList inputList = (as, bs, cin)
+  where numDigs = quot (length inputList) 2
+        as = take numDigs inputList
+        bs = drop numDigs $ take (2*numDigs) inputList
+        cin = head $ drop (2*numDigs) inputList
 
 
 --------- Testing ! ------------------------------------------------------------

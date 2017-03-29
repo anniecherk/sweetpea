@@ -4,7 +4,7 @@ Feature: Color
 
 
 Experiment:
-    2 x Fully_Cross(Word, Color)
+    2 x Fully_Cross(Color)
 
 
 
