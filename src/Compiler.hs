@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
-, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder -- "exploration"
+, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry -- "exploration"
 )
 where
 
@@ -11,6 +11,15 @@ import Data.List -- for zip4
 -- numDigs = 2
 -- numVars = 1 + (4*numDigs)
 -- allInputs = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..(2*numDigs + 1)]
+-- (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
+-- (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in []
+--
+-- cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
+-- res = map (\x -> concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
+
+
+
+
 -- (as, bs, cin) = head allInputs
 -- cs = [6, 8]
 -- ss = [7, 9]
@@ -210,33 +219,14 @@ testRippleCarryDIMACS numDigs = map (`showDIMACS` numVars) testRippleCarryConstr
 
 
 solnRippleCarry :: Int -> [String]
-solnRippleCarry numDigs = ["not implemented"]--map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnRippleCarry x)) ++ " 0\n") allInputs
+solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" result) ++ " 0\n") result
   where numVars = 1 + (4*numDigs)
         allInputs = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..(2*numDigs + 1)]
-
-        -- numDigs = 2
-        -- numVars = 1 + (4*numDigs)
-        -- allInputs = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..(2*numDigs + 1)]
-        -- (as, bs, cin) = head allInputs
-        -- cs = [6, 8]
-        -- ss = [7, 9]
-        -- map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss
-
-
-
-        --rippleCarryAsBsCin numDigs
-        --allInputs =
-        --allInputs = mapM (\x -> [x, -x]) [1..cin] -- generates all input combos (in counting order)
-
-        -- -- sum is positive iff (a+b+c) is odd
-        -- -- carry is positive iff (a+b+c) > 2
-        -- --                  [a, b, c] -> "a b c_in carry sum"
-computeSolnRippleCarry :: [Int] -> [Int]
-computeSolnRippleCarry incoming = incoming ++ [c] ++ [s]
-  where total = sum $ map (\x -> if x < 0 then 0 else 1) incoming
-        c = if total > 1 then 4 else -4
-        s = if odd total then 5 else -5
-
+        (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
+        (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
+        cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
+        result = map (concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex)) cases
+        --result = map (\(as, bs, cin) -> map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss) allInputs
                 -- we get in a list of numbers that's pos/ neg
                 -- we have a key to which numbers are a's, which are b's
                 -- match up the correct a's & b's and total them, produce the right c's & s's, then append
