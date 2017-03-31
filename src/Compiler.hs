@@ -235,7 +235,7 @@ solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc y-
         (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
         (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
         cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
-        result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
+        result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
         --result = map (\(as, bs, cin) -> map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss) allInputs
                 -- we get in a list of numbers that's pos/ neg
                 -- we have a key to which numbers are a's, which are b's
