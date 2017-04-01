@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
-, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry -- "exploration"
+, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry, go -- "exploration"
 )
 where
 
@@ -25,9 +25,9 @@ import Data.List -- for zip4
 -- (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
 -- (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
 -- cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
--- result = map (\x -> sort $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
+-- result = map (\x -> go x (-1) []) cases
 
-
+-- result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
 
 
 -- (as, bs, cin) = head allInputs
@@ -235,11 +235,32 @@ solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc y-
         (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
         (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
         cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
-        result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
+        result = map (\x -> go x (-5) []) cases
+        -- result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
         --result = map (\(as, bs, cin) -> map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss) allInputs
                 -- we get in a list of numbers that's pos/ neg
                 -- we have a key to which numbers are a's, which are b's
                 -- match up the correct a's & b's and total them, produce the right c's & s's, then append
+
+-- result = map (\x -> go x (-1) []) cases
+--
+-- todo = cases !! 9
+-- cin = -5
+-- accum = []
+
+
+-- dont ask questions :(      -- this is +/- 1
+go :: [(Int, Int, Int, Int, Int)] -> Int -> [Int] -> [Int]
+go []    _      accum = sortBy (\x y -> compare (abs x) (abs y)) accum
+go todo cin accum = go (tail todo) cout_val $ nub (accum ++ res)
+  where (a, b, _, cout_index, s_index) = head todo
+        res = computeSolnFullAdder [a, b, cin] cout_index s_index
+        cout_val = res !! 3
+        --cout_val = if (res!!2) > 0 then cout_index else (-1)*cout_index
+
+
+
+--  map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
 
 
 rippleCarryAsBsCin :: Int -> ([Int], [Int], Int)
