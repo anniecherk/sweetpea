@@ -10,14 +10,17 @@ import Data.Tuple.Select
 
 -- :m + Data.List
 -- :m + Data.Tuple.Select
--- numDigs = 2
+-- numDigs = 1
 -- numVars = 1 + (4*numDigs)
 -- allInputs = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..(2*numDigs + 1)]
 -- (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
 -- (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in []
---
 -- cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
--- res = map (\x -> concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
+-- result = map (\x -> go x (sel3 (head $ head cases)) []) cases
+
+
+
+
 
 
 -- :m + Data.List
@@ -238,17 +241,17 @@ solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc y-
         (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
         (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
         cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
-        result = map (\x -> go x (sel3 (head $ head cases)) []) cases 
+        result = map (\x -> go x (sel3 $ head x) []) cases
         -- result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
         --result = map (\(as, bs, cin) -> map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss) allInputs
                 -- we get in a list of numbers that's pos/ neg
                 -- we have a key to which numbers are a's, which are b's
                 -- match up the correct a's & b's and total them, produce the right c's & s's, then append
 
--- result = map (\x -> go x (-1) []) cases
---
--- todo = cases !! 9
--- cin = -5
+
+
+-- todo = cases !! 1
+-- cin = sel3 (head $ head cases)
 -- accum = []
 
 
