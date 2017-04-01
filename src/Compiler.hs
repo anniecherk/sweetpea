@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
-, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry, go -- "exploration"
+, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry, popCount-- "exploration"
 )
 where
 
@@ -8,45 +8,15 @@ import Data.List -- for zip4
 import Data.Tuple.Select
 
 
--- :m + Data.List
--- :m + Data.Tuple.Select
+
+
+
+
+
+
 -- numDigs = 1
 -- numVars = 1 + (4*numDigs)
--- allInputs = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..(2*numDigs + 1)]
--- (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
--- (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in []
--- cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
--- result = map (\x -> go x (sel3 (head $ head cases)) []) cases
-
-
-
-
-
-
--- :m + Data.List
--- :m + Data.Tuple
--- numDigs = 2
--- numVars = 1 + (4*numDigs)
--- allInputs = map rippleCarryAsBsCinList $ mapM (\x -> [x, -x]) [1..(2*numDigs + 1)]
--- (as_in, bs_in, cin_in) = rippleCarryAsBsCin numDigs
--- (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
--- cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
--- result = map (\x -> go x (-1) []) cases
-
--- result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
-
-
--- (as, bs, cin) = head allInputs
--- cs = [6, 8]
--- ss = [7, 9]
--- map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss
-
-
-
-
-
-
-
+-- mapM (\x -> [x, -x]) [1..numVars]
 
 
 
@@ -221,7 +191,6 @@ computeSolnFullAdder incoming cindex sindex = incoming ++ [c] ++ [s]
 -----------
 
 -- RIPPLE CARRY !
--- TODO: generating the as bs input lists might be tricky.. does it matter?
 testRippleCarryDIMACS :: Int -> [String]
 testRippleCarryDIMACS numDigs = map (`showDIMACS` numVars) testRippleCarryConstraints
   where numVars = 1 + (4*numDigs)
@@ -232,8 +201,6 @@ testRippleCarryDIMACS numDigs = map (`showDIMACS` numVars) testRippleCarryConstr
                 allInputs = mapM (\x -> [x, -x]) [1..cin] -- generates all input combos (in counting order)
 
 
-
-
 solnRippleCarry :: Int -> [String]            -- tail gets rid of a leading space
 solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc y-> acc ++ " " ++ show y) "" x) ++ " 0\n") result
   where numVars = 1 + (4*numDigs)
@@ -242,31 +209,13 @@ solnRippleCarry numDigs = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc y-
         (_, cs, ss) = rippleCarry as_in bs_in cin_in cin_in [] -- [as] [bs] cin #vars accum
         cases = map (\(as, bs, cin) -> zip5 as bs (repeat cin) cs ss) allInputs
         result = map (\x -> go x (sel3 $ head x) []) cases
-        -- result = map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
-        --result = map (\(as, bs, cin) -> map (\(a, b, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) $ zip4 as bs cs ss) allInputs
-                -- we get in a list of numbers that's pos/ neg
-                -- we have a key to which numbers are a's, which are b's
-                -- match up the correct a's & b's and total them, produce the right c's & s's, then append
-
-
-
--- todo = cases !! 1
--- cin = sel3 (head $ head cases)
--- accum = []
-
-
--- dont ask questions :(      -- this is +/- 1
-go :: [(Int, Int, Int, Int, Int)] -> Int -> [Int] -> [Int]
-go []    _      accum = sortBy (\x y -> compare (abs x) (abs y)) accum
-go todo cin accum = go (tail todo) cout_val $ nub (accum ++ res)
-  where (a, b, _, cout_index, s_index) = head todo
-        res = computeSolnFullAdder [a, b, cin] cout_index s_index
-        cout_val = res !! 3
-        --cout_val = if (res!!2) > 0 then cout_index else (-1)*cout_index
-
-
-
---  map (\x -> sortBy (\x y -> compare (abs x) (abs y)) $ nub $ concatMap (\(a, b, cin, cindex, sindex) -> computeSolnFullAdder [a, b, cin] cindex sindex) x) cases
+        -- dont ask questions :(      -- this is the initial cin, need this bc chaining
+        go :: [(Int, Int, Int, Int, Int)] -> Int -> [Int] -> [Int]
+        go []    _      accum = sortBy (\x y -> compare (abs x) (abs y)) accum
+        go todo cin accum = go (tail todo) cout_val $ nub (accum ++ res)
+          where (a, b, _, cout_index, s_index) = head todo
+                res = computeSolnFullAdder [a, b, cin] cout_index s_index
+                cout_val = res !! 3
 
 
 rippleCarryAsBsCin :: Int -> ([Int], [Int], Int)
@@ -284,8 +233,21 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
         cin = head $ drop (2*numDigs) inputList
 
 
+----------------
+-- Pop Count!
+popCountDIMACS :: Int -> [String]
+popCountDIMACS numDigs = map (`showDIMACS` numVars) popCountConstraints
+  where numVars = 1 + (4*numDigs)
+        popCountConstraints :: [CNF]
+        popCountConstraints = map (foldl (\acc y -> acc ++ andCNF [y]) adderConstraints) allInputs
+          where allInputs = mapM (\x -> [x, -x]) [1..numVars] -- generates all input combos (in counting order)
+                --popCount
+                (as, bs, cin) = rippleCarryAsBsCin numDigs
+                (adderConstraints, _, _) = rippleCarry as bs cin cin [] -- [as] [bs] cin #vars accum
+
+
+
 --------- Testing ! ------------------------------------------------------------
 
 parseResult :: String -> CNF
 parseResult result = map (map read . init . words . tail) $ lines result
--- parseResult result = map (map (\y -> read y ::Int ) . (init . words . tail)) $ lines result
