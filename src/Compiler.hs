@@ -63,35 +63,27 @@ distribute inputID = map (\orClause -> inputID : orClause)
 -- track state in rec calls
 popCount :: [Int] -> (CNF, [Int], [Int]) -- or CNF idk which is better
 popCount [] = ([[]], [], [])
-popCount inList =
+popCount inList = popCountLayer bitList nVars accum
   where nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
         auxList = [(length inList + 1).. 2^nearestLargestPow]
-        bitList = map (\x->[x]) (inList ++ auxList)
+        bitList = map (: []) (inList ++ auxList)
+        accum = map (\x -> [-x]) auxList
+        nVars = length bitList
 
 
 popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int], [Int])
-popCountLayer [] _ accum = accum
-popCountLayer inList nVars accum =
-  where (fixedList, newAcc) = if (rem (length inList) 2 == 0)
-                              then inList
-                              else ()
-
-  -- if length inList is ODD then
-  -- create a new variable (of the correct bitsize: length sublist) &
-  -- append that it is ZERO to the accum, and
-  -- add it to inList
-
-
-
-        halfWay = quot (length inList) 2
+popCountLayer [] _ accum = (accum, [], []) --TODO!!
+popCountLayer bitList nVars accum = popCountCompute firstHalf secondHalf nVars (accum, [], [])
+  where halfWay = quot (length bitList) 2
         firstHalf = take halfWay bitList
         secondHalf = drop halfWay bitList
 
 -- EXPECTS TWO LISTS OF THE SAME LENGTH!
-popCountCompute :: [[Int]] -> [[Int]] -> Int -> CNF -> (CNF, [Int], [Int])
+popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
 popCountCompute [] [] nVars accum = accum
-popCountCompute as bs nVars accum =
-  where res = rippleCarry (head as) (head bs) 0 nVars accum
+popCountCompute as bs nVars (accum, _, _) = popCountCompute (tail as) (tail bs) newNVars (accum ++ res, cs, ss)
+  where (res, cs, ss) = rippleCarry (head as) (head bs) 0 nVars accum
+        newNVars = length cs + length ss
 
 
 -- On how to pad out odd length lists:
@@ -302,8 +294,8 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
 
 ----------------
 -- Pop Count!
-popCountDIMACSInstance :: Int -> Int -> [String]
-popCountDIMACSInstance numDigs numTrue =
+-- popCountDIMACSInstance :: Int -> Int -> [String]
+-- popCountDIMACSInstance numDigs numTrue =
 
   -- map (`showDIMACS` numVars) popCountConstraints
   -- where numVars = 1 + (4*numDigs)

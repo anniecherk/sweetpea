@@ -34,3 +34,26 @@
 -- more efficent THIS IS HARDER TO IMPLEMENT
 -- OR make a new var K, and just append it like [K, I, J] && -K
 -- this is bad because then you have to deal with the highest carryout too
+
+
+
+
+
+
+ADDING PADDING AT THE TOP LEVEL
+
+-- [[1], [2], [3], [4], [5], [6], [7], [8], [9]]
+1) pad out to next power of 2 --> 16
+[[1], [2], [3], [4], [5], [6], [7], [8], [9], [10], [11], [12], [13], [14], [15], [16]]
+1b) split & add
+
+[[A B],[C D], [E F], [G H], [I J], [K L], [M N], [P Q]]
+2) split & add
+
+[[A B C], [D E F], [G H I], [J K L]]
+3) slit & add
+
+[[A B C D], [E F G H]]
+4) split & add
+
+[[A B C D E]]
