@@ -62,8 +62,8 @@ distribute inputID = map (\orClause -> inputID : orClause)
 
 -- setting up popcount!
 -- track state in rec calls
-popCount :: [Int] -> (CNF, [Int], [Int]) -- or CNF idk which is better
-popCount [] = ([[]], [], [])
+popCount :: [Int] -> (CNF, [Int]) -- or CNF idk which is better
+popCount [] = ([[]], [])
 popCount inList = popCountLayer bitList nVars accum
   where nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
         auxList = [(length inList + 1).. 2^nearestLargestPow]
@@ -72,21 +72,27 @@ popCount inList = popCountLayer bitList nVars accum
         nVars = length bitList
 
 
-popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int], [Int])
-popCountLayer [] _ accum = (accum, [], []) --TODO!!
-popCountLayer bitList nVars accum = (accum, [], []) --TODO!! --popCountLayer
+popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int])
+popCountLayer [] _ accum = (accum, []) --TODO!!
+popCountLayer bitList nVars accum = (accum, []) --TODO!! --popCountLayer
   where halfWay = quot (length bitList) 2
         firstHalf = take halfWay bitList
         secondHalf = drop halfWay bitList
-        (layerRes, cs, ss) = popCountCompute firstHalf secondHalf nVars (accum, [], [])
+        (layerRes, var_list) = popCountCompute firstHalf secondHalf nVars (accum, [])
+        --binaryResult = head cs : ss
 
 -- EXPECTS TWO LISTS OF THE SAME LENGTH!
-popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
+popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [[Int]]) -> (CNF, [[Int]])
 popCountCompute [] [] nVars accum = accum
-popCountCompute as bs nVars (accum, cs_in, ss_in) = popCountCompute (tail as) (tail bs) newNVars (res, cs ++ cs_in, ss ++ ss_in)
+popCountCompute as bs nVars (accum, res_vars_in) = popCountCompute (tail as) (tail bs) newNVars (res, formattedResult : res_vars_in)
   where c_in = nVars + 1
         (res, cs, ss) = rippleCarry (head as) (head bs) c_in c_in accum
         newNVars = nVars + length cs + length ss
+        formattedResult = head cs : ss
+
+
+
+
 -- bind up the result as the FINAL c with the s's and shove these in a list
 
 -- On how to pad out odd length lists:
