@@ -1,6 +1,7 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
-, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry, popCount-- "exploration"
+, andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
+, popCountCompute, popCountLayer, popCount-- "exploration"
 )
 where
 
@@ -73,18 +74,20 @@ popCount inList = popCountLayer bitList nVars accum
 
 popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int], [Int])
 popCountLayer [] _ accum = (accum, [], []) --TODO!!
-popCountLayer bitList nVars accum = popCountCompute firstHalf secondHalf nVars (accum, [], [])
+popCountLayer bitList nVars accum = (accum, [], []) --TODO!! --popCountLayer
   where halfWay = quot (length bitList) 2
         firstHalf = take halfWay bitList
         secondHalf = drop halfWay bitList
+        (layerRes, cs, ss) = popCountCompute firstHalf secondHalf nVars (accum, [], [])
 
 -- EXPECTS TWO LISTS OF THE SAME LENGTH!
 popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
 popCountCompute [] [] nVars accum = accum
-popCountCompute as bs nVars (accum, _, _) = popCountCompute (tail as) (tail bs) newNVars (accum ++ res, cs, ss)
-  where (res, cs, ss) = rippleCarry (head as) (head bs) 0 nVars accum
-        newNVars = length cs + length ss
-
+popCountCompute as bs nVars (accum, cs_in, ss_in) = popCountCompute (tail as) (tail bs) newNVars (res, cs ++ cs_in, ss ++ ss_in)
+  where c_in = nVars + 1
+        (res, cs, ss) = rippleCarry (head as) (head bs) c_in c_in accum
+        newNVars = nVars + length cs + length ss
+-- bind up the result as the FINAL c with the s's and shove these in a list
 
 -- On how to pad out odd length lists:
 -- [1, 2, 3]
