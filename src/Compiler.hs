@@ -62,18 +62,64 @@ distribute inputID = map (\orClause -> inputID : orClause)
 -- setting up popcount!
 -- track state in rec calls
 popCount :: [Int] -> (CNF, [Int], [Int]) -- or CNF idk which is better
-popCount inList = go inList [0] terminLen (length inList) [] --0 is a hack but should show up as an error
-  where terminLen = truncate $ logBase 2 $ fromIntegral $ length inList
-        go :: [Int] -> [Int] -> Int -> Int -> CNF -> (CNF, [Int], [Int])
-        go inputList cs terminationLen nVars accum
-          | length inputList == terminationLen = (accum, cs, inputList)
-          -- the new list is the s's out of the ripple carry
-          | otherwise = go ss cs terminationLen nVars res
-          where
-            halfWay = quot (length inList) 2
-            firstHalf = take halfWay inputList
-            secondHalf = drop halfWay inputList
-            (res, cs, ss) = rippleCarry firstHalf secondHalf 0 nVars accum
+popCount [] = ([[]], [], [])
+popCount inList =
+  where halfWay = quot (length inList) 2
+        firstHalf = take halfWay inputList
+        secondHalf = drop halfWay inputList
+
+popCountLayer :: [[Int]]
+-- oh shit, padding out the list is actually a problem, ie
+-- [1, 2, 3]
+-- generate a fresh variable: 4
+-- [1, 2, 3, 4]
+-- AND concat a condition that is -4 (that is, the fresh var is 0)
+
+-- find the length of the list, get it up to an even number
+
+-- [[1], [2], [3], [4], [5], [6], [7], [8], [9]]
+
+-- 1) make it even: get it up to 10
+-- [[1], [2], [3], [4], [5], [6], [7], [8], [9], [10]] && -10
+-- 1b) pair up & count with 1 bit adders
+
+-- 2) make it even: get it up to 6
+-- [[1+2 1+2], [3+4 3+4], [5+6 5+6], [7+8 7+8], [9+10 9+10]]
+-- [[A, B], [C, D], [E, F], [G, H], [I, J]] -- these are 2 bit values!!
+-- [[A, B], [C, D], [E, F], [G, H], [I, J], [K, L]]  && -K && -L
+-- 2b) pair up & count with 2 bit adders
+
+-- these are fresh var names because naming is hard
+-- 3) make it even: up to 4
+-- [[A, B, C], [D, E, F], [G, H, I]]  -- 3 bit values!!
+-- [[A, B, C], [D, E, F], [G, H, I], [J, K, L]] && -J && -K && -L
+-- 3b) pair up & count with 4 bit adders
+
+-- these are fresh var names because naming is hard
+-- [[A, B, C, D], [E, F, G, H]]  -- 4 bit values!!
+-- 4) final add! 5 bit value: [A B C D E] is the result!
+-- Note! B C D E are SUM bits while A is the FINAL C bit!!
+
+
+
+-- more efficent vvv
+-- OR make a new var K, and just append it like [K, I, J] && -K
+-- this is bad because then you have to deal with the highest carryout too
+
+
+-- popCount inList = go inList [0] terminLen (length inList) [] --0 is a hack but should show up as an error
+--   where terminLen = truncate $ logBase 2 $ fromIntegral $ length inList
+--         go :: [Int] -> [Int] -> Int -> Int -> CNF -> (CNF, [Int], [Int])
+--         go inputList cs terminationLen nVars accum
+--         -- BUG!!!! update this <= to something better
+--           | length inputList <= terminationLen = (accum, cs, inputList)
+--           -- the new list is the s's out of the ripple carry
+--           | otherwise = go ss cs terminationLen nVars res
+--           where
+--             halfWay = quot (length inList) 2
+--             firstHalf = take halfWay inputList
+--             secondHalf = drop halfWay inputList
+--             (res, cs, ss) = rippleCarry firstHalf secondHalf 0 nVars accum
 
 
 
@@ -235,15 +281,17 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
 
 ----------------
 -- Pop Count!
-popCountDIMACS :: Int -> [String]
-popCountDIMACS numDigs = map (`showDIMACS` numVars) popCountConstraints
-  where numVars = 1 + (4*numDigs)
-        popCountConstraints :: [CNF]
-        popCountConstraints = map (foldl (\acc y -> acc ++ andCNF [y]) adderConstraints) allInputs
-          where allInputs = mapM (\x -> [x, -x]) [1..numVars] -- generates all input combos (in counting order)
-                --popCount
-                (as, bs, cin) = rippleCarryAsBsCin numDigs
-                (adderConstraints, _, _) = rippleCarry as bs cin cin [] -- [as] [bs] cin #vars accum
+popCountDIMACSInstance :: Int -> Int -> [String]
+popCountDIMACSInstance numDigs numTrue =
+
+  -- map (`showDIMACS` numVars) popCountConstraints
+  -- where numVars = 1 + (4*numDigs)
+  --       popCountConstraints :: [CNF]
+  --       popCountConstraints = map (foldl (\acc y -> acc ++ andCNF [y]) adderConstraints) allInputs
+  --         where allInputs = mapM (\x -> [x, -x]) [1..numVars] -- generates all input combos (in counting order)
+  --               --popCount
+  --               (as, bs, cin) = rippleCarryAsBsCin numDigs
+  --               (adderConstraints, _, _) = rippleCarry as bs cin cin [] -- [as] [bs] cin #vars accum
 
 
 
