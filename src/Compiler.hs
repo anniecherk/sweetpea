@@ -64,12 +64,37 @@ distribute inputID = map (\orClause -> inputID : orClause)
 popCount :: [Int] -> (CNF, [Int], [Int]) -- or CNF idk which is better
 popCount [] = ([[]], [], [])
 popCount inList =
-  where halfWay = quot (length inList) 2
-        firstHalf = take halfWay inputList
-        secondHalf = drop halfWay inputList
+  where nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
+        auxList = [(length inList + 1).. 2^nearestLargestPow]
+        bitList = map (\x->[x]) (inList ++ auxList)
 
-popCountLayer :: [[Int]]
--- oh shit, padding out the list is actually a problem, ie
+
+popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int], [Int])
+popCountLayer [] _ accum = accum
+popCountLayer inList nVars accum =
+  where (fixedList, newAcc) = if (rem (length inList) 2 == 0)
+                              then inList
+                              else ()
+
+  -- if length inList is ODD then
+  -- create a new variable (of the correct bitsize: length sublist) &
+  -- append that it is ZERO to the accum, and
+  -- add it to inList
+
+
+
+        halfWay = quot (length inList) 2
+        firstHalf = take halfWay bitList
+        secondHalf = drop halfWay bitList
+
+-- EXPECTS TWO LISTS OF THE SAME LENGTH!
+popCountCompute :: [[Int]] -> [[Int]] -> Int -> CNF -> (CNF, [Int], [Int])
+popCountCompute [] [] nVars accum = accum
+popCountCompute as bs nVars accum =
+  where res = rippleCarry (head as) (head bs) 0 nVars accum
+
+
+-- On how to pad out odd length lists:
 -- [1, 2, 3]
 -- generate a fresh variable: 4
 -- [1, 2, 3, 4]
@@ -101,10 +126,6 @@ popCountLayer :: [[Int]]
 -- Note! B C D E are SUM bits while A is the FINAL C bit!!
 
 
-
--- more efficent vvv
--- OR make a new var K, and just append it like [K, I, J] && -K
--- this is bad because then you have to deal with the highest carryout too
 
 
 -- popCount inList = go inList [0] terminLen (length inList) [] --0 is a hack but should show up as an error
