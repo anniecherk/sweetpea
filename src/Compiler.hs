@@ -73,20 +73,22 @@ popCount inList = popCountLayer bitList nVars accum
 
 
 popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int])
-popCountLayer [] _ accum = (accum, []) --TODO!!
-popCountLayer bitList nVars accum = (accum, []) --TODO!! --popCountLayer
+popCountLayer [] _ res = ([], [])
+popCountLayer [x] _ cnf = (cnf, x)
+popCountLayer bitList nVars accum = popCountLayer var_list newNVars $ layerRes ++ accum -- pass in empty accum b.c pCC uses the accum for it's own recursive call; this is the init call
   where halfWay = quot (length bitList) 2
         firstHalf = take halfWay bitList
         secondHalf = drop halfWay bitList
         (layerRes, var_list) = popCountCompute firstHalf secondHalf nVars (accum, [])
+        newNVars = maximum $ concat var_list
         --binaryResult = head cs : ss
 
 -- EXPECTS TWO LISTS OF THE SAME LENGTH!
 popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [[Int]]) -> (CNF, [[Int]])
 popCountCompute [] [] nVars accum = accum
-popCountCompute as bs nVars (accum, res_vars_in) = popCountCompute (tail as) (tail bs) newNVars (res, formattedResult : res_vars_in)
+popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs newNVars (res, formattedResult : res_vars_in)
   where c_in = nVars + 1
-        (res, cs, ss) = rippleCarry (head as) (head bs) c_in c_in accum
+        (res, cs, ss) = rippleCarry a b c_in c_in accum
         newNVars = nVars + length cs + length ss
         formattedResult = head cs : ss
 
