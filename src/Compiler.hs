@@ -1,7 +1,7 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
-, popCountCompute, popCountLayer, popCount-- "exploration"
+, popCountCompute, popCountLayer, popCount, exhaust-- "exploration"
 )
 where
 
@@ -308,6 +308,16 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
 popCountDIMACS :: Int -> Int -> [String]
 popCountDIMACS numDigs numTrue = ["not implemented"]
   where (cnf, vars) = popCount [1.. numDigs]
+
+exhaust :: [Int] -> [[Int]]
+exhaust [] = []
+exhaust [x] = [[x], [-x]]
+exhaust (x:xs) = concatMap (\ys -> [x:ys, (-x):ys]) (exhaust xs)
+
+
+
+
+
         -- exhaustive spec...
         -- [1, 1, 1, 1, 1]
         -- [-1, 1, 1, 1, 1] etc
