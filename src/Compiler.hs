@@ -75,7 +75,7 @@ popCount inList = popCountLayer bitList nVars accum
 popCountLayer :: [[Int]] -> Int -> CNF -> (CNF, [Int])
 popCountLayer [] _ res = ([], [])
 popCountLayer [x] _ cnf = (cnf, x)
-popCountLayer bitList nVars accum = popCountLayer var_list newNVars $ layerRes ++ accum -- pass in empty accum b.c pCC uses the accum for it's own recursive call; this is the init call
+popCountLayer bitList nVars accum = popCountLayer var_list newNVars layerRes -- pass in empty accum b.c pCC uses the accum for it's own recursive call; this is the init call
   where halfWay = quot (length bitList) 2
         firstHalf = take halfWay bitList
         secondHalf = drop halfWay bitList
