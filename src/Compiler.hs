@@ -90,7 +90,7 @@ popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs
   where c_in = nVars + 1
         (res, cs, ss) = rippleCarry a b c_in c_in accum
         newNVars = nVars + length cs + length ss
-        formattedResult = head cs : ss
+        formattedResult = maximum cs : ss
 
 
 
@@ -305,8 +305,17 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
 
 ----------------
 -- Pop Count!
--- popCountDIMACSInstance :: Int -> Int -> [String]
--- popCountDIMACSInstance numDigs numTrue =
+popCountDIMACS :: Int -> Int -> [String]
+popCountDIMACS numDigs numTrue = ["not implemented"]
+  where (cnf, vars) = popCount [1.. numDigs]
+        -- exhaustive spec...
+        -- [1, 1, 1, 1, 1]
+        -- [-1, 1, 1, 1, 1] etc
+        -- [1, -1, 1, 1, 1]
+        -- then multiply these against vars
+
+        -- write to file, then run through sat solver
+        -- read in file name
 
   -- map (`showDIMACS` numVars) popCountConstraints
   -- where numVars = 1 + (4*numDigs)
