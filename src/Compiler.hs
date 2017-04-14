@@ -1,7 +1,7 @@
 module Compiler
 ( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
-, popCountCompute, popCountLayer, popCount, exhaust-- "exploration"
+, popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust-- "exploration"
 )
 where
 
@@ -87,8 +87,8 @@ popCountLayer bitList nVars accum = popCountLayer var_list newNVars layerRes -- 
 popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [[Int]]) -> (CNF, [[Int]])
 popCountCompute [] [] nVars accum = accum
 popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs newNVars (res, formattedResult : res_vars_in)
-  where c_in = nVars + 1
-        (res, cs, ss) = rippleCarry a b c_in c_in accum
+  where c_in = nVars + 1           -- assert that c_in is 0
+        (res, cs, ss) = rippleCarry a b c_in c_in ([-c_in] : accum)
         newNVars = nVars + length cs + length ss
         formattedResult = maximum cs : ss
 
@@ -305,9 +305,15 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
 
 ----------------
 -- Pop Count!
-popCountDIMACS :: Int -> Int -> [String]
-popCountDIMACS numDigs numTrue = ["not implemented"]
+popCountDIMACS :: Int -> [String]
+popCountDIMACS numDigs = map ((\ x -> showDIMACS (x ++ cnf) (maximum vars)) . map (: [])) allInputs
+  --map ((\ x -> showDIMACS (x ++ cnf) (maximum vars)) . (map (\ y -> [y])) allInputs
   where (cnf, vars) = popCount [1.. numDigs]
+        allInputs = exhaust [1.. numDigs]
+
+        -- map (\x -> showDIMACS (x++cnf) (maximum vars)) $ map (\x -> map (\y -> [y]) x) allInputs
+        -- map (\x -> showDIMACS (x : cnf) (maximum vars)) allInputs
+
 
 exhaust :: [Int] -> [[Int]]
 exhaust [] = []
