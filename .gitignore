@@ -3,6 +3,7 @@ dist-*
 cabal-dev
 generated_tests/*.cnf
 generated_tests/*.sol
+popCount*/
 *.o
 *.hi
 *.chi

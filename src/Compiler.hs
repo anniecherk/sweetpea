@@ -307,7 +307,6 @@ rippleCarryAsBsCinList inputList = (as, bs, cin)
 -- Pop Count!
 popCountDIMACS :: Int -> [String]
 popCountDIMACS numDigs = map ((\ x -> showDIMACS (x ++ cnf) (maximum vars)) . map (: [])) allInputs
-  --map ((\ x -> showDIMACS (x ++ cnf) (maximum vars)) . (map (\ y -> [y])) allInputs
   where (cnf, vars) = popCount [1.. numDigs]
         allInputs = exhaust [1.. numDigs]
 
@@ -345,6 +344,14 @@ exhaust (x:xs) = concatMap (\ys -> [x:ys, (-x):ys]) (exhaust xs)
 
 
 --------- Testing ! ------------------------------------------------------------
+-- result <- readFile "popCountResults/popCounter2_0.sol"
 
-parseResult :: String -> CNF
-parseResult result = map (map read . init . words . tail) $ lines result
+-- result <- readFile "popCountResults/underconstrained_9.sol"
+
+parseResult :: String -> Maybe CNF
+parseResult result
+  | numLines == 1 = Nothing
+  | otherwise  = Just cnf
+  where numLines = length $ lines result
+        inList = (init . concatMap (map read . words . tail) . tail . lines $ result) :: [Int]
+        cnf = map (:[]) inList

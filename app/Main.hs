@@ -4,6 +4,9 @@ import Compiler
 
 main :: IO ()                                                 -- zipping index for file names
 main = do
+
+  -- TODO: switch these on command line args
+
   -- --HALF ADDER (they dont have sol's)
   -- mapM_ (\(i, x) -> writeFile ("generated_tests/halfAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testHalfAdderDIMACS
   -- -- FULL ADDER
@@ -22,9 +25,17 @@ main = do
   -- mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ testRippleCarryDIMACS rippleSize
   -- mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".sol") x) $ zip [0..] $ solnRippleCarry rippleSize
 
-  let popCountLength = 2
-  mapM_ (\(i, x) -> writeFile ("popCountTests/popCounter" ++ show popCountLength ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
 
+  -- let popCountLength = 2
+  -- mapM_ (\(i, x) -> writeFile ("popCountTests/popCounter" ++ show popCountLength ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
+  -- let popCountLength = 3
+  -- mapM_ (\(i, x) -> writeFile ("popCountTests/popCounter" ++ show popCountLength ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
+  -- let popCountLength = 4
+  -- mapM_ (\(i, x) -> writeFile ("popCountTests/popCounter" ++ show popCountLength ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
+  -- let popCountLength = 5
+  -- mapM_ (\(i, x) -> writeFile ("popCountTests/popCounter" ++ show popCountLength ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
+
+  
 
   return ()
 

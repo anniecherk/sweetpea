@@ -1,0 +1,16 @@
+inList = [1.. 9]
+nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
+auxList = [(length inList + 1).. 2^nearestLargestPow]
+bitList = map (: []) (inList ++ auxList)
+accum = map (\x -> [-x]) auxList
+nVars = length bitList
+halfWay = quot (length bitList) 2
+firstHalf = take halfWay bitList
+secondHalf = drop halfWay bitList
+as = firstHalf
+bs = secondHalf
+accum = []
+cs_in = []
+ss_in = []
+c_in = nVars + 1
+(res_cnf, res_vars) = popCountCompute firstHalf secondHalf nVars (accum, [])
