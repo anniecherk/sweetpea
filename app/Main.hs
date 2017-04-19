@@ -2,9 +2,22 @@ module Main where
 
 import Compiler
 import Testers
+import System.Environment
 
 main :: IO ()                                                 -- zipping index for file names
 main = do
+    args <- getArgs
+    if length args < 1
+    then putStrLn "use commandline arg <generate n> to generate popCount tests of strings of length n \n or  commandline arg <test> to test all files in popCountResults directory."
+    else
+      if head args == "generate"
+      then do
+        let popCountLength = head (tail args)
+        mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
+        putStrLn "Done generating tests"
+      else
+        putStrLn "Done testing"
+
 
   -- TODO: switch these on command line args
 
@@ -38,7 +51,7 @@ main = do
 
 
 
-  return ()
+--  return ()
 
 
   --writeFile "generated_cnfs/testFile.annie" "hello world\n"
