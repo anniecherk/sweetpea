@@ -1,5 +1,5 @@
 module Compiler
-( CNF, showDIMACS, showCNF, halfAdder, parseResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
+( CNF, showDIMACS, showCNF, halfAdder, testResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
 , popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust-- "exploration"
 )
@@ -8,6 +8,9 @@ where
 import Data.List -- for zip4
 import Data.Tuple.Select
 
+
+import Text.Read (readMaybe)
+import Control.Monad
 
 
 
@@ -344,14 +347,33 @@ exhaust (x:xs) = concatMap (\ys -> [x:ys, (-x):ys]) (exhaust xs)
 
 
 --------- Testing ! ------------------------------------------------------------
--- result <- readFile "popCountResults/popCounter2_0.sol"
+-- result <- readFile "popCountResults/popCounter3_1.sol"
 
 -- result <- readFile "popCountResults/underconstrained_9.sol"
+data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deriving(Show)
 
-parseResult :: String -> Maybe CNF
-parseResult result
-  | numLines == 1 = Nothing
-  | otherwise  = Just cnf
+
+
+testResult :: String -> Int -> SATResult
+testResult result setVars
+  | numLines == 1 = Unsatisfiable
+  | otherwise = correct
   where numLines = length $ lines result
-        inList = (init . concatMap (map read . words . tail) . tail . lines $ result) :: [Int]
-        cnf = map (:[]) inList
+        resVars = snd $ popCount [1.. setVars]
+        inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+        correct = case inList of
+          Nothing -> ParseError
+          Just x -> correctHuh x setVars resVars
+
+
+correctHuh :: [Int] -> Int -> [Int] -> SATResult
+correctHuh inList setVars resVars
+  | nSetBits == resSetBits = Correct
+  | otherwise = WrongResult nSetBits resSetBits
+  where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
+        resBools = map ((> 0) . (inList !!) . subtract 1) resVars
+        resSetBits = foldl (\acc bit -> if bit then acc*2+1 else acc*2) 0 resBools
+
+
+          -- WrongResult nSetBits resSetBits
+      --  inList = (init . concatMap (map read . words . tail) . tail . lines $ result) :: [Int]
