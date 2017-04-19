@@ -1,6 +1,7 @@
 module Main where
 
 import Compiler
+import Testers
 
 main :: IO ()                                                 -- zipping index for file names
 main = do
@@ -35,7 +36,7 @@ main = do
   -- let popCountLength = 5
   -- mapM_ (\(i, x) -> writeFile ("popCountTests/popCounter" ++ show popCountLength ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
 
-  
+
 
   return ()
 
