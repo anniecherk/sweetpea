@@ -34,6 +34,16 @@ distribute inputID = map (\orClause -> inputID : orClause)
 
 
 
+-- inList = [1.. 3]
+-- nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
+-- auxList = [(length inList + 1).. 2^nearestLargestPow]
+-- bitList = map (: []) (inList ++ auxList)
+-- accum = map (\x -> [-x]) auxList
+-- nVars = length bitList
+
+
+
+
 -- See! notes/how_to_zeropad_on_popcount.txt for algorithm
 popCount :: [Int] -> (CNF, [Int]) -- or CNF idk which is better
 popCount [] = ([[]], [])
@@ -62,7 +72,7 @@ popCountCompute [] [] nVars accum = accum
 popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs newNVars (res, formattedResult : res_vars_in)
   where c_in = nVars + 1           -- assert that c_in is 0
         (res, cs, ss) = rippleCarry a b c_in c_in ([-c_in] : accum)
-        newNVars = nVars + length cs + length ss
+        newNVars = nVars + length cs + length ss + 1 -- 1 for the c_in
         formattedResult = maximum cs : ss
 
 

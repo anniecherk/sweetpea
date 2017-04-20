@@ -1,7 +1,7 @@
 module Testers
 ( showDIMACS, showCNF, testResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
-, popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust-- "exploration"
+, popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust, SATResult-- "exploration"
 )
 where
 
@@ -11,6 +11,8 @@ import Text.Read (readMaybe)
 import Control.Monad
 import Compiler
 
+
+data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deriving(Show)
 
 
 showDIMACS :: CNF -> Int -> String
@@ -126,7 +128,6 @@ exhaust (x:xs) = concatMap (\ys -> [x:ys, (-x):ys]) (exhaust xs)
 -- result <- readFile "popCountResults/popCounter3_1.sol"
 -- result <- readFile "popCountResults/popCounter1_0.sol"
 -- result <- readFile "popCountResults/underconstrained_9.sol"
-data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deriving(Show)
 
 
 

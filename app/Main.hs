@@ -3,6 +3,21 @@ module Main where
 import Compiler
 import Testers
 import System.Environment
+import System.Directory
+
+-- doTest :: String -> SATResult
+-- doTest file = do
+--   result <- readFile file
+--   testResult result 1
+--
+--
+-- validate :: SATResult -> String
+-- validate Correct = ""
+-- validate Unsatisfiable = "oh no, Unsatisfiable!"
+-- validate WrongResult x y = "expected " ++ show x ++ " but got " ++ show y
+-- validate ParseError = "oh no, parse error!"
+
+
 
 main :: IO ()                                                 -- zipping index for file names
 main = do
@@ -15,7 +30,10 @@ main = do
         let popCountLength = head (tail args)
         mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
         putStrLn "Done generating tests"
-      else
+      else do
+        fileList <- getDirectoryContents "./popCountResults"
+        -- tail . tail gets rid of . & ..
+      --  map (doTest . ("./popCountResults/" ++)) $ (tail . tail) fileList
         putStrLn "Done testing"
 
 
