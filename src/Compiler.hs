@@ -40,6 +40,16 @@ distribute inputID = map (\orClause -> inputID : orClause)
 -- bitList = map (: []) (inList ++ auxList)
 -- accum = map (\x -> [-x]) auxList
 -- nVars = length bitList
+-- halfWay = quot (length bitList) 2
+-- firstHalf = take halfWay bitList
+-- secondHalf = drop halfWay bitList
+-- (layerRes, var_list) = popCountCompute (reverse firstHalf) (reverse secondHalf) nVars (accum, [])
+-- newNVars = maximum $ concat var_list
+-- bitList = var_list
+-- nVars = newNVars
+-- accum = layerRes
+
+
 
 
 
@@ -73,7 +83,7 @@ popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs
   where c_in = nVars + 1           -- assert that c_in is 0
         (res, cs, ss) = rippleCarry a b c_in c_in ([-c_in] : accum)
         newNVars = nVars + length cs + length ss + 1 -- 1 for the c_in
-        formattedResult = maximum cs : ss
+        formattedResult = maximum cs :  ss
 
 
 
@@ -82,7 +92,7 @@ popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs
 -- Just a recursive function to tie the c's together correctly
           --    a's      b's    cin    nVars  accum : accum  c's    s's
 rippleCarry :: [Int] -> [Int] -> Int -> Int -> CNF -> (CNF, [Int], [Int])
-rippleCarry as bs cin nVars accum = go (zip as bs) cin nVars (accum, [], [])
+rippleCarry as bs cin nVars accum = go (zip (reverse as) (reverse bs)) cin nVars (accum, [], [])
   where go :: [(Int, Int)] -> Int -> Int -> (CNF, [Int], [Int]) -> (CNF, [Int], [Int])
         go []    _    _     resAccum               = resAccum
         go asbs cin' nVar' (cnfList, cList, sList) = go (tail asbs) cRes (nVar' + 2) (newCnfList, newCs, newSs)
