@@ -83,7 +83,7 @@ popCountCompute (a:as) (b:bs) nVars (accum, res_vars_in) = popCountCompute as bs
   where c_in = nVars + 1           -- assert that c_in is 0
         (res, cs, ss) = rippleCarry a b c_in c_in ([-c_in] : accum)
         newNVars = nVars + length cs + length ss + 1 -- 1 for the c_in
-        formattedResult = maximum cs :  ss
+        formattedResult = maximum cs :  (reverse ss)
 
 
 
