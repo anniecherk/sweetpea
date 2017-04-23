@@ -5,17 +5,17 @@ import Testers
 import System.Environment
 import System.Directory
 
--- doTest :: String -> SATResult
--- doTest file = do
---   result <- readFile file
---   testResult result 1
---
---
--- validate :: SATResult -> String
--- validate Correct = ""
--- validate Unsatisfiable = "oh no, Unsatisfiable!"
--- validate WrongResult x y = "expected " ++ show x ++ " but got " ++ show y
--- validate ParseError = "oh no, parse error!"
+doTest :: String -> IO String
+doTest file = do
+  result <- readFile file
+  return $ validate $ testResult result 1
+
+
+validate :: SATResult -> String
+validate Correct = "Correct!"
+validate Unsatisfiable = "oh no, Unsatisfiable!"
+validate (WrongResult x y) = "expected " ++ show x ++ " but got " ++ show y
+validate ParseError = "oh no, parse error!"
 
 
 
@@ -33,7 +33,8 @@ main = do
       else do
         fileList <- getDirectoryContents "./popCountResults"
         -- tail . tail gets rid of . & ..
-      --  map (doTest . ("./popCountResults/" ++)) $ (tail . tail) fileList
+        results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
+        mapM_ putStrLn results
         putStrLn "Done testing"
 
 
