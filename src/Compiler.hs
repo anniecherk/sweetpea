@@ -8,6 +8,22 @@ where
 type CNF = [[Int]]
 
 -------------------------------
+-- FRONTEND
+
+assertKofN :: Int -> [Int] -> CNF
+assertKofN k inList = [[]]
+  where (accum, sumBits) = popCount inList
+
+
+
+-- inList = [1.. 9]
+-- k = 4
+
+
+
+
+-------------------------------
+-- BACKEND
 
 -- wraps in an extra layer: this is just for readabilty
 andCNF :: [Int] -> CNF
@@ -30,28 +46,6 @@ xNorCNF a b = [[a, -b], [-a, b]]
 distribute :: Int -> CNF -> CNF
 distribute inputID = map (\orClause -> inputID : orClause)
 ------------
-
-
-
-
--- inList = [1.. 3]
--- nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
--- auxList = [(length inList + 1).. 2^nearestLargestPow]
--- bitList = map (: []) (inList ++ auxList)
--- accum = map (\x -> [-x]) auxList
--- nVars = length bitList
--- halfWay = quot (length bitList) 2
--- firstHalf = take halfWay bitList
--- secondHalf = drop halfWay bitList
--- (layerRes, var_list) = popCountCompute (reverse firstHalf) (reverse secondHalf) nVars (accum, [])
--- newNVars = maximum $ concat var_list
--- bitList = var_list
--- nVars = newNVars
--- accum = layerRes
-
-
-
-
 
 
 -- See! notes/how_to_zeropad_on_popcount.txt for algorithm
