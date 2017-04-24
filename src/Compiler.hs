@@ -1,6 +1,15 @@
 module Compiler
-( CNF, halfAdder, fullAdder, andCNF, rippleCarry, popCountCompute, popCountLayer, popCount )
+( CNF, halfAdder, fullAdder, andCNF, rippleCarry, popCountCompute, popCountLayer, popCount,
+assertKofN )
 where
+
+
+
+
+
+
+
+
 
 
 
@@ -11,13 +20,25 @@ type CNF = [[Int]]
 -- FRONTEND
 
 assertKofN :: Int -> [Int] -> CNF
-assertKofN k inList = [[]]
+assertKofN k inList = map (:[]) assertion -- ++ accum
   where (accum, sumBits) = popCount inList
+        inBinary = toBinary k []
+        leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
+        assertion = zipWith (*) leftPadded sumBits
+        toBinary :: Int -> [Int] -> [Int]
+        toBinary input acc
+          | input == 0 = acc
+          | even input = toBinary (quot input 2) ((-1):acc)
+          | otherwise  = toBinary (quot input 2) (1:acc)
+
+
+
 
 
 
 -- inList = [1.. 9]
 -- k = 4
+-- (accum, sumBits) = popCount inList
 
 
 
