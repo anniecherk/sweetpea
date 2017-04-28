@@ -52,23 +52,20 @@ subtract k n = ([[]], [])
 -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
 -- prepend a "1" to make it negative, flip the bits, & add one
 toNegTwosComp :: [Int] -> Int -> (CNF, [Int])
-toNegTwosComp input nVars = ([[]], [])
+toNegTwosComp input nVars = (cnf, ss)
   -- one more var than before so we can set the high bit
-  where freshVars = [(nVars+1).. ((length input) + nVars + 1)]
+  where flippedBitsVars = [(nVars+1).. (length input + nVars + 1)]
         -- "prepend a 1" by "anding" it on the the CNF
-        topOne = [head freshVars]
+        leadingOneCNF = [[head flippedBitsVars]]
         -- flip the bits, ie assert freshVar_i iff ~inputVar_i
-        flippedBits = zipWith doubleImplies (tail freshVars) input
+        flippedBitsCNF = concat $ zipWith doubleImplies (tail flippedBitsVars) input
         -- make a zero padded one
+        oneVars = [(length input + nVars + 2).. ((2*length input) + nVars + 2)] --TODO: aaaand it's time for the state monad
+        cin = 1 + maximum oneVars
+      -- accum c's s's                     a's      b's    cin nVars       accum
+        (cnf, _, ss) = rippleCarry flippedBitsVars oneVars cin cin (leadingOneCNF ++ flippedBitsCNF)
 
 
-
-
-        --
-        -- bitsFlipped = 1 : map (\x -> if x==0 then 1 else 0) input
-        -- zeroPaddedOne = (take ((length bitsFlipped)-1) $ repeat 0) ++ [1]
-              --    a's      b's    cin    nVars  accum : accum  c's    s's
-      --  rippleCarry
 
 
 -- (a or ~b) and (~a or b)
