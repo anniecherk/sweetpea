@@ -32,6 +32,11 @@ type CNF = [[Int]]
 
 -------------------------------
 -- FRONTEND
+-- TODO: possible off-by-one, careful!
+assertKofwhichN :: Int -> Int -> Int -> [Int] -> CNF
+assertKofwhichN numFactors whichFactor k inList =
+  assertKofN k $ filter (\x -> rem x numFactors == whichFactor) inList
+
 
 assertKofN :: Int -> [Int] -> CNF
 assertKofN k inList = map (:[]) assertion -- ++ accum
@@ -46,8 +51,16 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
           | otherwise  = toBinary (quot input 2) (1:acc)
 
 
-subtract :: [Int] -> [Int] -> (CNF, [Int])
-subtract k n = ([[]], [])
+-- k < n  === k + (-n) < 0
+assertKlessthanN :: Int -> [Int] -> CNF
+assertKlessthanN k inList = [[]]
+
+
+subtract :: [Int] -> [Int] -> Int -> (CNF, [Int])
+subtract k n nVars = ([[]], [])
+  where (cnf, twosCompN) = toNegTwosComp n nVars
+        twosCompK = 3 -- NEED TO PASS OUT NVARS FROM TONEGTWOSCOMP <-- it's high time to refactor
+
 
 -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
 -- prepend a "1" to make it negative, flip the bits, & add one
@@ -68,9 +81,7 @@ toNegTwosComp input nVars = (cnf, ss)
 
 
 
--- (a or ~b) and (~a or b)
-doubleImplies :: Int -> Int -> CNF
-doubleImplies a b = [[a, -b], [-a, b]]
+
 
 
 
@@ -85,10 +96,13 @@ doubleImplies a b = [[a, -b], [-a, b]]
 -------------------------------
 -- BACKEND
 
+-- (a or ~b) and (~a or b)
+doubleImplies :: Int -> Int -> CNF
+doubleImplies a b = [[a, -b], [-a, b]]
+
 -- wraps in an extra layer: this is just for readabilty
 andCNF :: [Int] -> CNF
 andCNF = return --(: [])
-
 
 -- not A or not B
 nAndCNF :: Int -> Int -> CNF
@@ -101,7 +115,6 @@ xorCNF a b = [[a, b], [-a, -b]]
 
 xNorCNF :: Int -> Int -> CNF
 xNorCNF a b = [[a, -b], [-a, b]]
-
 
 distribute :: Int -> CNF -> CNF
 distribute inputID = map (\orClause -> inputID : orClause)
