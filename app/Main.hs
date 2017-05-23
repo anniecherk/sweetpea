@@ -8,7 +8,7 @@ import System.Directory
 doTest :: String -> IO String
 doTest file = do
   result <- readFile file
-  return $ validate $ testResult result 1
+  return $ validate $ testPopCountResult result 1
 
 
 validate :: SATResult -> String

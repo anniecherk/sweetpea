@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, halfAdder, fullAdder, andCNF, rippleCarry, popCountCompute, popCountLayer, popCount,
-assertKofN
+assertKofN, toNegTwosComp, assertKofwhichN, assertKlessthanN, subtract'
 , doubleImplies )
 where
 
@@ -32,6 +32,8 @@ type CNF = [[Int]]
 
 -------------------------------
 -- FRONTEND
+
+
 -- TODO: possible off-by-one, careful!
 assertKofwhichN :: Int -> Int -> Int -> [Int] -> CNF
 assertKofwhichN numFactors whichFactor k inList =
@@ -52,18 +54,23 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
 
 
 -- k < n  === k + (-n) < 0
+-- k is the desiredCount
+-- n is the output of popcount of the inList
 assertKlessthanN :: Int -> [Int] -> CNF
-assertKlessthanN k inList = [[]]
+assertKlessthanN desiredCount inList = [[]]
 
 
-subtract :: [Int] -> [Int] -> Int -> (CNF, [Int])
-subtract k n nVars = ([[]], [])
+subtract' :: [Int] -> [Int] -> Int -> (CNF, [Int])
+subtract' k n nVars = ([[]], [])
   where (cnf, twosCompN) = toNegTwosComp n nVars
         twosCompK = 3 -- NEED TO PASS OUT NVARS FROM TONEGTWOSCOMP <-- it's high time to refactor
 
 
 -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
 -- prepend a "1" to make it negative, flip the bits, & add one
+-- input is the binary rep of the number to negate
+-- nVars is the fresh variable store to thread into the adder (to add one)
+-- result is cnf for the adder and new variables, "ss" is the final neg 2's comp variable
 toNegTwosComp :: [Int] -> Int -> (CNF, [Int])
 toNegTwosComp input nVars = (cnf, ss)
   -- one more var than before so we can set the high bit

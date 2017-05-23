@@ -1,7 +1,7 @@
 module Testers
-( showDIMACS, showCNF, testResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
+( showDIMACS, showCNF, testPopCountResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
-, popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust, SATResult-- "exploration"
+, popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust, popCountKDIMACS, popCountAllKDIMACS, SATResult(..)-- "exploration"
 )
 where
 
@@ -122,17 +122,28 @@ exhaust [x] = [[x], [-x]]
 exhaust (x:xs) = concatMap (\ys -> [x:ys, (-x):ys]) (exhaust xs)
 
 
+---
+-- this version is for a particular k
+-- (ie ask the solver to find an assignmnet where k of n are true)
+-- note: there are many soln's to this! the solver just needs to find *a* solution
+popCountKDIMACS :: Int -> Int -> String
+popCountKDIMACS numDigs k = showDIMACS (cond ++ cnf) (maximum vars)
+  where (cnf, vars) = popCount [1.. numDigs]
+        cond = assertKofN k [1..numDigs]
+
+-- this is the exhaustive version
+popCountAllKDIMACS :: Int -> Int -> [String]
+popCountAllKDIMACS numDigs k = map (popCountKDIMACS numDigs) [0.. numDigs]
 
 
 --------- Testing ! ------------------------------------------------------------
--- result <- readFile "popCountResults/popCounter3_1.sol"
--- result <- readFile "popCountResults/popCounter1_0.sol"
--- result <- readFile "popCountResults/underconstrained_9.sol"
+-- result <- readFile "popCountResults/3_popCounter_1.sol"
 
 
 
-testResult :: String -> Int -> SATResult
-testResult result setVars
+
+testPopCountResult :: String -> Int -> SATResult
+testPopCountResult result setVars
   | numLines == 1 = Unsatisfiable
   | otherwise = correct
   where numLines = length $ lines result
@@ -140,11 +151,11 @@ testResult result setVars
         inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
         correct = case inList of
           Nothing -> ParseError
-          Just x -> correctHuh x setVars resVars
+          Just x -> popCountCorrectHuh x setVars resVars
 
 
-correctHuh :: [Int] -> Int -> [Int] -> SATResult
-correctHuh inList setVars resVars
+popCountCorrectHuh :: [Int] -> Int -> [Int] -> SATResult
+popCountCorrectHuh inList setVars resVars
   | nSetBits == resSetBits = Correct
   | otherwise = WrongResult nSetBits resSetBits
   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
