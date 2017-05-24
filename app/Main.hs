@@ -18,24 +18,39 @@ validate (WrongResult x y) = "expected " ++ show x ++ " but got " ++ show y
 validate ParseError = "oh no, parse error!"
 
 
+splitOnArgs :: [String] -> IO ()
+splitOnArgs args
+  | head args == "generate"
+  = do
+      let popCountLength = head (tail args)
+      mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
+      putStrLn "Done generating tests"
+  | otherwise
+  = do
+    fileList <- getDirectoryContents "./popCountResults"
+    -- tail . tail gets rid of . & ..
+    results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
+    mapM_ putStrLn results
+    putStrLn "Done testing"
+
 
 main :: IO ()                                                 -- zipping index for file names
 main = do
     args <- getArgs
     if length args < 1
     then putStrLn "use commandline arg <generate n> to generate popCount tests of strings of length n \n or  commandline arg <test> to test all files in popCountResults directory."
-    else
-      if head args == "generate"
-      then do
-        let popCountLength = head (tail args)
-        mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
-        putStrLn "Done generating tests"
-      else do
-        fileList <- getDirectoryContents "./popCountResults"
-        -- tail . tail gets rid of . & ..
-        results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
-        mapM_ putStrLn results
-        putStrLn "Done testing"
+    else splitOnArgs args
+      -- if head args == "generate"
+      -- then do
+      --   let popCountLength = head (tail args)
+      --   mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
+      --   putStrLn "Done generating tests"
+      -- else do
+      --   fileList <- getDirectoryContents "./popCountResults"
+      --   -- tail . tail gets rid of . & ..
+      --   results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
+      --   mapM_ putStrLn results
+      --   putStrLn "Done testing"
 
 
   -- TODO: switch these on command line args
