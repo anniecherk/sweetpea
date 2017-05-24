@@ -13,7 +13,7 @@ fi
 
 #regenerate the tests!!
 stack build
-stack exec cnf generate 6
+stack exec cnf generatePopCount 6
 
 for file in popCountTests/$base*.cnf;
 do
@@ -29,6 +29,6 @@ do
 
 done
 
-stack exec cnf tests
+stack exec cnf testPopCount
 
 echo -e "${GREEN}Done generating results!${NC}"

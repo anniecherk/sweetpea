@@ -13,7 +13,8 @@ fi
 
 #regenerate the tests!!
 stack build
-stack exec cnf
+stack exec cnf fullAdder
+stack exec cnf rippleCarry 3
 
 for file in generated_tests/$base*.cnf;
 do

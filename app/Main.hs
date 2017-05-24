@@ -23,7 +23,7 @@ splitOnArgs args
 -- mean to be run with the gen_popcount_results.sh script: it generates files, runs them, reads them back in to be validated
 -- example useage: gen_popcount_results.sh 6 // 6 specifies the length of the sequence we're exhausitvely validating
 -- defaults to 2
-  | head args == "generate"
+  | head args == "generatePopCount"
   = do
       let popCountLength = if length args == 2
                            then read (head (tail args)) :: Int
@@ -34,7 +34,8 @@ splitOnArgs args
   = do
       fileList <- getDirectoryContents "./popCountResults"
       -- tail . tail gets rid of . & ..
-      results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
+      results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList]
+      -- if
       mapM_ putStrLn results
       putStrLn "Done testing"
 
@@ -64,8 +65,9 @@ splitOnArgs args
 
 
 ------------------------------------------------------------------------------------------------------------------------
-  | otherwise = putStrLn "I don't know what you want from me! Try one of these cmdln args:\n\
-      \generatePopCount [n], testPopCount, halfAdder, fullAdder, rippleCarry [n] \n"
+  | otherwise = putStrLn $ "I don't know what you want from me! \n You said: " ++
+  show args ++ "\nTry one of these cmdln args:\n\
+  \generatePopCount [n], testPopCount, halfAdder, fullAdder, rippleCarry [n] \n"
 
 
 main :: IO ()                                                 -- zipping index for file names
