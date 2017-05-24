@@ -20,18 +20,52 @@ validate ParseError = "oh no, parse error!"
 
 splitOnArgs :: [String] -> IO ()
 splitOnArgs args
+-- mean to be run with the gen_popcount_results.sh script: it generates files, runs them, reads them back in to be validated
+-- example useage: gen_popcount_results.sh 6 // 6 specifies the length of the sequence we're exhausitvely validating
+-- defaults to 2
   | head args == "generate"
   = do
-      let popCountLength = head (tail args)
-      mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
+      let popCountLength = if length args == 2
+                           then read (head (tail args)) :: Int
+                            else 2
+      mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ show popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
       putStrLn "Done generating tests"
-  | otherwise
+  | head args == "testPopCount"
   = do
-    fileList <- getDirectoryContents "./popCountResults"
-    -- tail . tail gets rid of . & ..
-    results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
-    mapM_ putStrLn results
-    putStrLn "Done testing"
+      fileList <- getDirectoryContents "./popCountResults"
+      -- tail . tail gets rid of . & ..
+      results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
+      mapM_ putStrLn results
+      putStrLn "Done testing"
+
+------------------------------------------------------------------------------------------------------------------------
+  | head args == "halfAdder" --HALF ADDER (they dont have sol's: I checked these by hand early on)
+  = mapM_ (\(i, x) -> writeFile ("generated_tests/halfAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testHalfAdderDIMACS
+
+------------------------------------------------------------------------------------------------------------------------
+-- meant to be run from the run_tests.sh script: it generates all the files, and then diffs them against the SAT result
+-- useage: ./run_tests.sh --fulladder
+  | head args == "fullAdder" --tests ALL inputs to the full adder
+  = do
+    mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testFullAdderDIMACS
+    mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".sol") x) $ zip [0..] solnFullAdder
+
+------------------------------------------------------------------------------------------------------------------------
+-- meant to be run from the run_tests.sh script: it generates all the files, and then diffs them against the SAT result
+-- useage: ./rippleCarry.sh --ripplecarry 6 // where 6 specifies the length of the sequenece we're exhaustively testing
+-- defaults to size 2.. not sure if this is the best design but...
+  | head args == "rippleCarry" --tests ALL inputs to the full adder
+  = do
+    let rippleSize = if length args == 2
+                     then read (head (tail args)) :: Int
+                     else 2
+    mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ testRippleCarryDIMACS rippleSize
+    mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".sol") x) $ zip [0..] $ solnRippleCarry rippleSize
+
+
+------------------------------------------------------------------------------------------------------------------------
+  | otherwise = putStrLn "I don't know what you want from me! Try one of these cmdln args:\n\
+      \generatePopCount [n], testPopCount, halfAdder, fullAdder, rippleCarry [n] \n"
 
 
 main :: IO ()                                                 -- zipping index for file names
@@ -40,26 +74,12 @@ main = do
     if length args < 1
     then putStrLn "use commandline arg <generate n> to generate popCount tests of strings of length n \n or  commandline arg <test> to test all files in popCountResults directory."
     else splitOnArgs args
-      -- if head args == "generate"
-      -- then do
-      --   let popCountLength = head (tail args)
-      --   mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS (read popCountLength ::Int)
-      --   putStrLn "Done generating tests"
-      -- else do
-      --   fileList <- getDirectoryContents "./popCountResults"
-      --   -- tail . tail gets rid of . & ..
-      --   results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
-      --   mapM_ putStrLn results
-      --   putStrLn "Done testing"
 
 
   -- TODO: switch these on command line args
 
-  -- --HALF ADDER (they dont have sol's)
-  -- mapM_ (\(i, x) -> writeFile ("generated_tests/halfAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testHalfAdderDIMACS
-  -- -- FULL ADDER
-  -- mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testFullAdderDIMACS
-  -- mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".sol") x) $ zip [0..] solnFullAdder
+
+
   -- -- RIPPLE CARRY SIZE 1 : same as a full adder
   -- let rippleSize = 1
   -- mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ testRippleCarryDIMACS rippleSize
