@@ -4,11 +4,15 @@ import Compiler
 import Testers
 import System.Environment
 import System.Directory
+import Data.Char
 
-doTest :: String -> IO String
-doTest file = do
+doTest :: String -> Int -> IO String
+doTest file nSetVars= do
+--doTest file = do
   result <- readFile file
-  return $ validate $ testPopCountResult result 1
+  -- need to parse the file name! yeesh
+--  let nSetVars = (digitToInt . head) file
+  return $ validate $ testPopCountResult result nSetVars--1
 
 
 validate :: SATResult -> String
@@ -21,20 +25,23 @@ validate ParseError = "oh no, parse error!"
 splitOnArgs :: [String] -> IO ()
 splitOnArgs args
 -- mean to be run with the gen_popcount_results.sh script: it generates files, runs them, reads them back in to be validated
--- example useage: gen_popcount_results.sh 6 // 6 specifies the length of the sequence we're exhausitvely validating
+-- example useage: gen_popcount_results.sh 6
+-- 6 specifies the length of the sequence we're exhausitvely validating
 -- defaults to 2
+-- NOTE: popcount is tested by setting the inputs, and validating what they add to!
   | head args == "generatePopCount"
   = do
       let popCountLength = if length args == 2
                            then read (head (tail args)) :: Int
-                            else 2
+                           else 2
       mapM_ (\(i, x) -> writeFile ("popCountTests/" ++ show popCountLength ++ "_popCounter" ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
       putStrLn "Done generating tests"
   | head args == "testPopCount"
   = do
       fileList <- getDirectoryContents "./popCountResults"
-      -- tail . tail gets rid of . & ..
-      results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList]
+      -- tail . tail gets rid of . & .. directories
+      results <- mapM (\x -> doTest ("./popCountResults/" ++ x) $ (digitToInt . head) x) $ drop 2 fileList
+    --  results <- mapM (doTest . ("./popCountResults/" ++)) $ drop 2 fileList
       -- if
       mapM_ putStrLn results
       putStrLn "Done testing"
