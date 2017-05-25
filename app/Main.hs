@@ -29,15 +29,16 @@ import Data.List.Split
 doTestPopCount :: String -> IO String
 doTestPopCount file = do
   result <- readFile file
-  let nSetVars = read (head $ splitOn "_" file) ::Int
+  let shortFilePath = splitOn "/" file !! 2 --- a plague on both your houses
+  let nSetVars = read (head $ splitOn "_" shortFilePath) ::Int
   return $ validate $ testResultPopCount result nSetVars
 
 doTestKofN :: String -> IO String
 doTestKofN file = do
-  result <- readFile file  -- TODO CHANGE THIS FOR THE LOVE OF GOD
-  let k = read (head $ splitOn "_" file) ::Int
-  let nSetVars = read (splitOn "_" file !! 2) ::Int
-  return $ validate $  ParseError--testResult result nSetVars kOfNCorrectHuh
+  result <- readFile file
+  let nSetVars = read (splitOneOf "_./" file !! 3) ::Int --- lord have mercy lord have mercy lord have mercy
+  let k        = read (splitOneOf "_./" file !! 5) ::Int -- this makes assumptions about how the generateKofN formats file names...
+  return $ validate $  testResultKofN result k nSetVars
 
 validate :: SATResult -> String
 validate Correct = "Correct!"
@@ -80,21 +81,30 @@ splitOnArgs args
       -- popcount is tested by setting the inputs, and validating what they add to!
         | head args == "generateKofN"
         = do
-            -- let popCountLength = if length args == 2
-            --                      then read (head (tail args)) :: Int
-            --                      else 2                                                                        -- zipping index for file names
-            -- mapM_ (\(i, x) -> writeFile ("KofNTests/" ++ show popCountLength ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountDIMACS popCountLength
+            let n = if length args == 2
+                    then read (head (tail args)) :: Int
+                    else 2                                                                        -- zipping index for file names
+                    -- TODO: refactor to zipWithM_
+            mapM_ (\(i, x) -> writeFile ("KofNTests/" ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountAllKDIMACS n
             putStrLn "Done generating tests"
       -----
         | head args == "testKofN"
         = do
-            -- fileList <- getDirectoryContents "./popCountResults"
-            -- -- tail . tail gets rid of . & .. directories
-            -- results <- mapM (\x -> doTestPopCount ("./popCountResults/" ++ x) $ (digitToInt . head) x) $ drop 2 fileList
-            -- if length args == 2 && (args !! 1) == "v"
-            -- then mapM_ putStrLn results
-            -- else mapM_ putStrLn $ filter (/="Correct!") results
+            fileList <- getDirectoryContents "./KofNResults/"
+            -- tail . tail gets rid of . & .. directories
+            results <- mapM (doTestKofN . ("./KofNResults/" ++)) $ drop 2 fileList
+            if length args == 2 && (args !! 1) == "v"
+            then mapM_ putStrLn results
+            else mapM_ putStrLn $ filter (/="Correct!") results
             putStrLn "Done testing"
+
+
+
+
+
+-- fileList <- getDirectoryContents "./KofNResults/"
+-- file = "./KofNResults/" ++ (head $ drop 2 fileList)
+-- result <- readFile file
 
 
 ------------------------------------------------------------------------------------------------------------------------

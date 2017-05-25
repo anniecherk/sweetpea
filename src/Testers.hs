@@ -211,17 +211,30 @@ popCountCorrectHuh inList setVars resVars
 
 -----------
 testResultKofN :: String -> Int -> Int -> SATResult
-testResultKofN result k setVars
+testResultKofN result k nSetVars
   | numLines == 1 = Unsatisfiable
   | otherwise = correct
   where numLines = length $ lines result
         inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
         correct = case inList of
           Nothing -> ParseError
-          Just x -> kOfNCorrectHuh x k setVars
+          Just x -> kOfNCorrectHuh x k nSetVars
 
 kOfNCorrectHuh :: [Int] -> Int -> Int -> SATResult
-kOfNCorrectHuh inList k setVars
+kOfNCorrectHuh inList k nSetVars
   | nSetBits == k = Correct
   | otherwise = WrongResult nSetBits k
-  where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
+  where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take nSetVars inList
+
+
+
+
+
+
+-- import Text.Read (readMaybe)
+-- maybeinList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+-- :{
+-- inList = case maybeinList of
+--     Nothing -> []
+--     Just x -> x
+-- :}
