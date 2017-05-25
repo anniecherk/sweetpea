@@ -5,18 +5,40 @@ import Testers
 import System.Environment
 import System.Directory
 import Data.Char
+import Data.List.Split
+
+
+
+
+
+
+
+
+--file = "3_of_6_test.cryptosol"
+--result <- readFile file
+
+
+
+
+
+
+
+
 
 -- TODO: refactor so doTestPopCount and doTestKofN are a single function
 -- function signature polymorphism problem
-doTestPopCount :: String -> Int -> IO String
-doTestPopCount file nSetVars= do
+doTestPopCount :: String -> IO String
+doTestPopCount file = do
   result <- readFile file
-  return $ validate $ testPopCountResult result nSetVars
+  let nSetVars = read (head $ splitOn "_" file) ::Int
+  return $ validate $ testResult result nSetVars popCountCorrectHuh
 
-doTestKofN :: String -> Int -> Int -> IO String
-doTestKofN file k nSetVars = do
+doTestKofN :: String -> IO String
+doTestKofN file = do
   result <- readFile file  -- TODO CHANGE THIS FOR THE LOVE OF GOD
-  return $ validate $  ParseError--testPopCountResult result nSetVars
+  let k = read (head $ splitOn "_" file) ::Int
+  let nSetVars = read ((splitOn "_" file) !! 2) ::Int
+  return $ validate $  ParseError--testResult result nSetVars kOfNCorrectHuh
 
 validate :: SATResult -> String
 validate Correct = "Correct!"
@@ -44,7 +66,7 @@ splitOnArgs args
   = do
       fileList <- getDirectoryContents "./popCountResults"
       -- tail . tail gets rid of . & .. directories
-      results <- mapM (\x -> doTestPopCount ("./popCountResults/" ++ x) $ (digitToInt . head) x) $ drop 2 fileList
+      results <- mapM (doTestPopCount . ("./popCountResults/" ++)) $ drop 2 fileList
       if length args == 2 && (args !! 1) == "v"
       then mapM_ putStrLn results
       else mapM_ putStrLn $ filter (/="Correct!") results
