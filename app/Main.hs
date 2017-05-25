@@ -14,8 +14,7 @@ import Data.List.Split
 
 
 
---file = "3_of_6_test.cryptosol"
---result <- readFile file
+
 
 
 
@@ -31,13 +30,13 @@ doTestPopCount :: String -> IO String
 doTestPopCount file = do
   result <- readFile file
   let nSetVars = read (head $ splitOn "_" file) ::Int
-  return $ validate $ testResult result nSetVars popCountCorrectHuh
+  return $ validate $ testResultPopCount result nSetVars
 
 doTestKofN :: String -> IO String
 doTestKofN file = do
   result <- readFile file  -- TODO CHANGE THIS FOR THE LOVE OF GOD
   let k = read (head $ splitOn "_" file) ::Int
-  let nSetVars = read ((splitOn "_" file) !! 2) ::Int
+  let nSetVars = read (splitOn "_" file !! 2) ::Int
   return $ validate $  ParseError--testResult result nSetVars kOfNCorrectHuh
 
 validate :: SATResult -> String

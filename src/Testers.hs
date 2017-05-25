@@ -1,6 +1,7 @@
 module Testers
-( showDIMACS, showCNF, testPopCountResult, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
+( showDIMACS, showCNF, testResultPopCount, testResultKofN, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
+, popCountCorrectHuh, kOfNCorrectHuh
 , popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust, popCountKDIMACS, popCountAllKDIMACS, SATResult(..)-- "exploration"
 )
 where
@@ -132,18 +133,63 @@ popCountKDIMACS numDigs k = showDIMACS (cond ++ cnf) (maximum vars)
         cond = assertKofN k [1..numDigs]
 
 -- this is the exhaustive version
-popCountAllKDIMACS :: Int -> Int -> [String]
-popCountAllKDIMACS numDigs k = map (popCountKDIMACS numDigs) [0.. numDigs]
+-- asserts every k from 0 to n
+popCountAllKDIMACS :: Int -> [String]
+popCountAllKDIMACS numDigs = map (popCountKDIMACS numDigs) [0.. numDigs]
 
 
 --------- Testing ! ------------------------------------------------------------
 -- result <- readFile "popCountResults/3_popCounter_1.sol"
 
+-- -- TODO: combine these two functions!
+-- testKofNResult :: String -> Int -> Int -> SATResult
+-- testKofNResult result k nsetVars
+-- | numLines == 1 = Unsatisfiable
+-- | otherwise = correct
+-- where numLines = length $ lines result
+--       resVars = snd $ popCount [1.. setVars]
+--       inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+--       correct = case inList of
+--         Nothing -> ParseError
+--         Just x -> popCountCorrectHuh x setVars resVars
+--
+-- popCountCorrectHuh :: [Int] -> Int -> [Int] -> SATResult
+-- popCountCorrectHuh inList setVars resVars
+--   | nSetBits == resSetBits = Correct
+--   | otherwise = WrongResult nSetBits resSetBits
+--   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
+--         resBools = map ((> 0) . (inList !!) . subtract 1) resVars
+--         resSetBits = foldl (\acc bit -> if bit then acc*2+1 else acc*2) 0 resBools
+
+-- testResult :: String -> Int -> ([Int] -> Int -> [Int] -> SATResult) -> SATResult
+-- testResult result setVars validationFunction
+--   | numLines == 1 = Unsatisfiable
+--   | otherwise = correct
+--   where numLines = length $ lines result
+--         resVars = snd $ popCount [1.. setVars]
+--         inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+--         correct = case inList of
+--           Nothing -> ParseError
+--           Just x -> validationFunction x setVars resVars
+
+----------
 
 
 
-testPopCountResult :: String -> Int -> SATResult
-testPopCountResult result setVars
+
+
+-- file = "3_of_6_test.cryptosol"
+-- result <- readFile file
+-- k = 3
+-- setVars = 6
+--
+-- testResultKofN result k setVars
+
+
+----
+
+testResultPopCount :: String -> Int -> SATResult
+testResultPopCount result setVars
   | numLines == 1 = Unsatisfiable
   | otherwise = correct
   where numLines = length $ lines result
@@ -153,7 +199,6 @@ testPopCountResult result setVars
           Nothing -> ParseError
           Just x -> popCountCorrectHuh x setVars resVars
 
-
 popCountCorrectHuh :: [Int] -> Int -> [Int] -> SATResult
 popCountCorrectHuh inList setVars resVars
   | nSetBits == resSetBits = Correct
@@ -161,3 +206,22 @@ popCountCorrectHuh inList setVars resVars
   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
         resBools = map ((> 0) . (inList !!) . subtract 1) resVars
         resSetBits = foldl (\acc bit -> if bit then acc*2+1 else acc*2) 0 resBools
+
+
+
+-----------
+testResultKofN :: String -> Int -> Int -> SATResult
+testResultKofN result k setVars
+  | numLines == 1 = Unsatisfiable
+  | otherwise = correct
+  where numLines = length $ lines result
+        inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+        correct = case inList of
+          Nothing -> ParseError
+          Just x -> kOfNCorrectHuh x k setVars
+
+kOfNCorrectHuh :: [Int] -> Int -> Int -> SATResult
+kOfNCorrectHuh inList k setVars
+  | nSetBits == k = Correct
+  | otherwise = WrongResult nSetBits k
+  where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
