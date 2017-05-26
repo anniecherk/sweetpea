@@ -87,12 +87,11 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
         inBinary = toBinary k []
         leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
         assertion = zipWith (*) leftPadded sumBits
-
-toBinary :: Int -> [Int] -> [Int]
-toBinary input acc
-  | input == 0 = acc
-  | even input = toBinary (quot input 2) ((-1):acc)
-  | otherwise  = toBinary (quot input 2) (1:acc)
+        toBinary :: Int -> [Int] -> [Int]
+        toBinary input acc
+          | input == 0 = acc
+          | even input = toBinary (quot input 2) ((-1):acc)
+          | otherwise  = toBinary (quot input 2) (1:acc)
 
 
 ------------------------------------------------
@@ -103,8 +102,28 @@ assertKlessthanN :: Int -> [Int] -> CNF
 assertKlessthanN desiredCount inList = fst $ subtract' k res nVars
 -- use the inList to get n : this is the output of popCount
   where (cnf, res) = popCount inList
-        k = toBinary desiredCount [] -- TODO DOES THIS NEED TO BE IN BINARY??? put desiredCount into binary: this means a list of vars
+        k = allocateBinary desiredCount (maximum inList) [] -- TODO DOES THIS NEED TO BE IN BINARY??? put desiredCount into binary: this means a list of vars
         nVars = maximum res
+        allocateBinary :: Int -> Int -> [Int] -> [Int]
+        allocateBinary input fresh acc
+          | input == 0 = acc
+          | even input = allocateBinary (quot input 2) (fresh+1) ((-1*fresh):acc)
+          | otherwise  = allocateBinary (quot input 2) (fresh+1) (fresh:acc)
+
+
+
+
+
+-- allocateBinary tests:
+-- allocateBinary 2 3 [] = [4,-3]
+-- allocateBinary 4 3 [] = [5,-4,-3]
+-- allocateBinary 8 3 [] = [6,-5,-4,-3]
+-- allocateBinary 7 3 [] = [5,4,3]
+-- allocateBinary 64 3 [] = [9,-8,-7,-6,-5,-4,-3]
+-- allocateBinary 0 3 [] = []
+
+
+
 
 -- TODO
 subtract' :: [Int] -> [Int] -> Int -> (CNF, [Int])
