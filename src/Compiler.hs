@@ -1,6 +1,7 @@
 module Compiler
-( CNF, halfAdder, fullAdder, andCNF, rippleCarry, popCountCompute, popCountLayer, popCount,
-assertKofN, toNegTwosComp, assertKofwhichN, assertKlessthanN, subtract', nAndCNF
+( CNF, halfAdder, fullAdder, rippleCarry, popCountCompute, popCountLayer, popCount
+, toNegTwosComp, andCNF
+, assertKofN, assertKofwhichN, assertKlessthanN, subtract', nAndCNF
 , doubleImplies )
 where
 
@@ -86,25 +87,39 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
         inBinary = toBinary k []
         leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
         assertion = zipWith (*) leftPadded sumBits
-        toBinary :: Int -> [Int] -> [Int]
-        toBinary input acc
-          | input == 0 = acc
-          | even input = toBinary (quot input 2) ((-1):acc)
-          | otherwise  = toBinary (quot input 2) (1:acc)
+
+toBinary :: Int -> [Int] -> [Int]
+toBinary input acc
+  | input == 0 = acc
+  | even input = toBinary (quot input 2) ((-1):acc)
+  | otherwise  = toBinary (quot input 2) (1:acc)
 
 
 ------------------------------------------------
 -- k < n  === k + (-n) < 0
 -- k is the desiredCount
--- n is the output of popcount of the inList
+-- n is the output of popcount of the inList --BUG THIS HAS NOT BEEN TESTED
 assertKlessthanN :: Int -> [Int] -> CNF
-assertKlessthanN desiredCount inList = [[]]
+assertKlessthanN desiredCount inList = fst $ subtract' k res nVars
+-- use the inList to get n : this is the output of popCount
+  where (cnf, res) = popCount inList
+        k = toBinary desiredCount [] -- TODO DOES THIS NEED TO BE IN BINARY??? put desiredCount into binary: this means a list of vars
+        nVars = maximum res
 
-
+-- TODO
 subtract' :: [Int] -> [Int] -> Int -> (CNF, [Int])
 subtract' k n nVars = ([[]], [])
-  where (cnf, twosCompN) = toNegTwosComp n nVars
-        twosCompK = 3 -- NEED TO PASS OUT NVARS FROM TONEGTWOSCOMP <-- it's high time to refactor
+  where (nCnf, twosCompN) = toNegTwosComp n nVars
+        newNVars = maximum twosCompN -- we're not going to talk about how kludgy this is
+        -- zero pad twosCompK until it's the same size as twosCompN
+        twosCompK = [0] -- TODO: zero pad
+        kCnf = [[0], [0]] --TODO:
+
+        rcCin = 0 -- TODO: make this a new var set to 0, append to cnfs
+        finalNumberNVars = newNVars --TODO, this is the max after everything else is done
+        -- add them with a ripple carry
+        -- accum c's s's                 a's      b's    cin     nVars            accum
+        (cnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf)
 
 
 -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
