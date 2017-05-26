@@ -1,31 +1,8 @@
 module Compiler
 ( CNF, halfAdder, fullAdder, andCNF, rippleCarry, popCountCompute, popCountLayer, popCount,
-assertKofN, toNegTwosComp, assertKofwhichN, assertKlessthanN, subtract'
+assertKofN, toNegTwosComp, assertKofwhichN, assertKlessthanN, subtract', nAndCNF
 , doubleImplies )
 where
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
--- input = [1, 2, 3, 4]
--- nVars = 4
--- freshVars = [(nVars+1).. ((length input) + nVars + 1)]
-
-
-
-
-
 
 -- AND of ORs
 type CNF = [[Int]]
@@ -34,12 +11,75 @@ type CNF = [[Int]]
 -- FRONTEND
 
 
+
+
+
+
+
+
+
+
+
+
+-- inputFactors = [[1, 2, 3], [4, 5]]
+-- factorToBalance = 1
+-- trialLength = length $ concat inputFactors
+-- inList = [1.. (trialLength*(4+1))] -- because 4 for each one to show up once, and +1 because trans = trials - 1. This is the SMALLEST example with 2 levels O_o
+-- nVars = 25
+--
+-- level1 = head $ inputFactors !! factorToBalance
+-- level2 = head $ tail $ inputFactors !! factorToBalance
+--
+--
+--
+-- --need to "wind back" by trialLength because 0..n-1 not 1..n. Janky janky janky
+-- circle = filter (\x -> rem x trialLength == (rem level1 trialLength)) inList
+-- square = filter (\x -> rem x trialLength == (rem level2 trialLength)) inList
+--
+-- -- THESE ARE THE POSITIVE VALUES TODO that is definitely wrong, and is [[x], [y]] brain is melting
+-- circleCircle = map (\(x, y) -> [x, y]) $ zip circle (tail circle)
+-- squareSquare = map (\(x, y) -> [x, y]) $ zip square (tail square)
+-- circleSquare = map (\(x, y) -> [x, y]) $ zip circle (tail square)
+-- squareCircle = map (\(x, y) -> [x, y]) $ zip circle (tail square)
+--
+-- -- THESE ARE THE NEGATIVE VALUES
+-- -- map (\(x, y) -> nAndCNF x y) $ zip circle (tail circle)
+--
+-- CREATE NEW VARS
+--
+-- -- this is horrible
+-- as = [(nVars+1).. (nVars + (length circleCircle))]
+-- bs = [(maximum as)+1.. (maximum as) + (length circleCircle)]
+-- cs = [(maximum bs)+1.. (maximum bs) + (length circleCircle)]
+-- ds = [(maximum cs)+1.. (maximum cs) + (length circleCircle)]
+
+-- -- we're going to get through this, now let's do values
+
+-- -- okay hang in there, now doubleImplies with the values
+
+
+
+-- TODO: handle not even multiples of transitions (+/- 1 perhaps)  --> wont that always be true
+-- TODO:
+-- inputFactors is the key of how to read the relations in the inputList
+-- ie, color: red, blue, green | shape: circle, square comes in as
+--    [[1, 2, 3], [4, 5]]
+-- factorToBalance is the index, ie 0 for color, 1 for shape
+-- inList is the flattened list of ALL trials, ie [1.. 5*40] has 40 trials
+-- transitionConstraint :: [[Int]] -> Int -> [Int]
+-- transitionConstraint inputFactors factorToBalance
+
+
+
+
 -- TODO: possible off-by-one, careful!
 assertKofwhichN :: Int -> Int -> Int -> [Int] -> CNF
 assertKofwhichN numFactors whichFactor k inList =
   assertKofN k $ filter (\x -> rem x numFactors == whichFactor) inList
 
-
+-- asserts that the total multibit "sum" value out of popcount
+-- IS K (in binary), this requires left padding w. 0's for correct comparison
+-- (assertion made by adding those double implications to CNF accumulator)
 assertKofN :: Int -> [Int] -> CNF
 assertKofN k inList = map (:[]) assertion -- ++ accum
   where (accum, sumBits) = popCount inList
@@ -53,6 +93,7 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
           | otherwise  = toBinary (quot input 2) (1:acc)
 
 
+------------------------------------------------
 -- k < n  === k + (-n) < 0
 -- k is the desiredCount
 -- n is the output of popcount of the inList
@@ -84,19 +125,6 @@ toNegTwosComp input nVars = (cnf, ss)
         cin = 1 + maximum oneVars
       -- accum c's s's                     a's      b's    cin nVars       accum
         (cnf, _, ss) = rippleCarry flippedBitsVars oneVars cin cin (leadingOneCNF ++ flippedBitsCNF)
-
-
-
-
-
-
-
-
-
--- inList = [1.. 9]
--- k = 4
--- (accum, sumBits) = popCount inList
-
 
 
 
@@ -149,6 +177,7 @@ popCountLayer bitList nVars accum = popCountLayer var_list newNVars layerRes -- 
         (layerRes, var_list) = popCountCompute firstHalf secondHalf nVars (accum, [])
         newNVars = maximum $ concat var_list
         --binaryResult = head cs : ss
+
 
 -- EXPECTS TWO LISTS OF THE SAME LENGTH!
 popCountCompute :: [[Int]] -> [[Int]] -> Int -> (CNF, [[Int]]) -> (CNF, [[Int]])
