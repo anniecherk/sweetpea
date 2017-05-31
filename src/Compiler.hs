@@ -125,17 +125,31 @@ assertKlessthanN desiredCount inList = fst $ subtract' k res nVars
 
 
 
+
+
+-- k = [1, 2, 3]
+-- n = [5, 4, 6]
+
+-- k = [1, 2]
+-- n = [3, 4, 5, 6]
+-- nVars = 6
+-- (nCnf, twosCompN) = toNegTwosComp n nVars
+-- newNVars = maximum twosCompN
+
 -- TODO
 subtract' :: [Int] -> [Int] -> Int -> (CNF, [Int])
 subtract' k n nVars = ([[]], [])
   where (nCnf, twosCompN) = toNegTwosComp n nVars
         newNVars = maximum twosCompN -- we're not going to talk about how kludgy this is
         -- zero pad twosCompK until it's the same size as twosCompN
-        twosCompK = [0] -- TODO: zero pad
-        kCnf = [[0], [0]] --TODO:
+        zeroPadding = [(newNVars+1)..(length twosCompN - length k + newNVars)]
+        twosCompK = zeroPadding ++ k --prepend zeropadding
+        kCnf = map (\x -> [-x]) zeroPadding --"and" the new vars in their negative form
 
-        rcCin = 0 -- TODO: make this a new var set to 0, append to cnfs
-        finalNumberNVars = newNVars --TODO, this is the max after everything else is done
+        rcCin = 1 + maximum zeroPadding
+        rcCNF = [-rcCin]
+
+        finalNumberNVars = rcCin + 1 --this is the max after everything else is done, in need of refactor
         -- add them with a ripple carry
         -- accum c's s's                 a's      b's    cin     nVars            accum
         (cnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf)
