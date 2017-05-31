@@ -37,8 +37,8 @@ doTestPopCount file = do
 doTestKandN :: (Int -> Int -> Bool) -> String -> IO String
 doTestKandN eqOrLessThan file = do
   result <- readFile file
-  let nSetVars = read (splitOneOf "_./" file !! 3) ::Int --- lord have mercy lord have mercy lord have mercy
-  let k        = read (splitOneOf "_./" file !! 5) ::Int -- this makes assumptions about how the generateKofN formats file names...
+  let nSetVars = read (splitOneOf "_./" file !! 1) ::Int --- lord have mercy lord have mercy lord have mercy
+  let k        = read (splitOneOf "_./" file !! 3) ::Int -- this makes assumptions about how the generateKofN formats file names...
   return $ validate $  testResultKandN result k nSetVars eqOrLessThan
 
 validate :: SATResult -> String
@@ -48,10 +48,10 @@ validate (WrongResult x y) = "expected " ++ show x ++ " but got " ++ show y
 validate ParseError = "oh no, parse error!"
 
 
-processNandK :: [String] -> (Int -> Int -> Bool) -> IO ()
-processNandK args eqOrLessThan = do
-    fileList <- getDirectoryContents "./KofNResults/"
-    results <- mapM (doTestKandN eqOrLessThan . ("./KofNResults/" ++)) $ drop 2 fileList
+processNandK :: [String] -> (Int -> Int -> Bool) -> String -> IO ()
+processNandK args eqOrLessThan dirName = do
+    fileList <- getDirectoryContents dirName
+    results <- mapM (doTestKandN eqOrLessThan . (dirName ++)) $ drop 2 fileList
     if length args == 2 && (args !! 1) == "v"
     then mapM_ putStrLn results
     else mapM_ putStrLn $ filter (/="Correct!") results
@@ -98,10 +98,19 @@ splitOnArgs args
                     -- TODO: refactor to zipWithM_
             mapM_ (\(i, x) -> writeFile ("KofNTests/" ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountAllKDIMACS n
             putStrLn "Done generating tests"
+
+        | head args == "generateKlessthanN"
+        = do
+            let n = if length args == 2
+                    then read (head (tail args)) :: Int
+                    else 2                                                                        -- zipping index for file names
+                    -- TODO: refactor to zipWithM_
+            mapM_ (\(i, x) -> writeFile ("KlessthanNTests/" ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountAllKDIMACS n
+            putStrLn "Done generating tests"
       -----
-        | head args == "testKofN" = processNandK args (==)
+        | head args == "testKofN" = processNandK args (==) "KofNResults/"
       -----
-        | head args == "testKlessthanN" = processNandK args (<)
+        | head args == "testKlessthanN" = processNandK args (<) "KlessthanNResults/"
 
 
 
