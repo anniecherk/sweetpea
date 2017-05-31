@@ -33,18 +33,29 @@ doTestPopCount file = do
   let nSetVars = read (head $ splitOn "_" shortFilePath) ::Int
   return $ validate $ testResultPopCount result nSetVars
 
-doTestKofN :: String -> IO String
-doTestKofN file = do
+        -- this is either (==) or (<)
+doTestKandN :: (Int -> Int -> Bool) -> String -> IO String
+doTestKandN eqOrLessThan file = do
   result <- readFile file
   let nSetVars = read (splitOneOf "_./" file !! 3) ::Int --- lord have mercy lord have mercy lord have mercy
   let k        = read (splitOneOf "_./" file !! 5) ::Int -- this makes assumptions about how the generateKofN formats file names...
-  return $ validate $  testResultKofN result k nSetVars
+  return $ validate $  testResultKandN result k nSetVars eqOrLessThan
 
 validate :: SATResult -> String
 validate Correct = "Correct!"
 validate Unsatisfiable = "oh no, Unsatisfiable!"
 validate (WrongResult x y) = "expected " ++ show x ++ " but got " ++ show y
 validate ParseError = "oh no, parse error!"
+
+
+processNandK :: [String] -> (Int -> Int -> Bool) -> IO ()
+processNandK args eqOrLessThan = do
+    fileList <- getDirectoryContents "./KofNResults/"
+    results <- mapM (doTestKandN eqOrLessThan . ("./KofNResults/" ++)) $ drop 2 fileList
+    if length args == 2 && (args !! 1) == "v"
+    then mapM_ putStrLn results
+    else mapM_ putStrLn $ filter (/="Correct!") results
+    putStrLn "Done testing"
 
 
 splitOnArgs :: [String] -> IO ()
@@ -88,15 +99,11 @@ splitOnArgs args
             mapM_ (\(i, x) -> writeFile ("KofNTests/" ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountAllKDIMACS n
             putStrLn "Done generating tests"
       -----
-        | head args == "testKofN"
-        = do
-            fileList <- getDirectoryContents "./KofNResults/"
-            -- tail . tail gets rid of . & .. directories
-            results <- mapM (doTestKofN . ("./KofNResults/" ++)) $ drop 2 fileList
-            if length args == 2 && (args !! 1) == "v"
-            then mapM_ putStrLn results
-            else mapM_ putStrLn $ filter (/="Correct!") results
-            putStrLn "Done testing"
+        | head args == "testKofN" = processNandK args (==)
+      -----
+        | head args == "testKlessthanN" = processNandK args (<)
+
+
 
 
 

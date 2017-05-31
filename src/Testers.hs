@@ -1,7 +1,7 @@
 module Testers
-( showDIMACS, showCNF, testResultPopCount, testResultKofN, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
+( showDIMACS, showCNF, testResultPopCount, testResultKandN, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
-, popCountCorrectHuh, kOfNCorrectHuh
+, popCountCorrectHuh, kAndNCorrectHuh
 , popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust, popCountKDIMACS, popCountAllKDIMACS, SATResult(..)-- "exploration"
 )
 where
@@ -210,21 +210,40 @@ popCountCorrectHuh inList setVars resVars
 
 
 -----------
-testResultKofN :: String -> Int -> Int -> SATResult
-testResultKofN result k nSetVars
+testResultKandN :: String -> Int -> Int -> (Int -> Int -> Bool) -> SATResult
+testResultKandN result k nSetVars eqOrLessThan
   | numLines == 1 = Unsatisfiable
   | otherwise = correct
   where numLines = length $ lines result
         inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
         correct = case inList of
           Nothing -> ParseError
-          Just x -> kOfNCorrectHuh x k nSetVars
+          Just x -> kAndNCorrectHuh x k nSetVars eqOrLessThan
 
-kOfNCorrectHuh :: [Int] -> Int -> Int -> SATResult
-kOfNCorrectHuh inList k nSetVars
-  | nSetBits == k = Correct
+kAndNCorrectHuh :: [Int] -> Int -> Int -> (Int -> Int -> Bool) -> SATResult
+kAndNCorrectHuh inList k nSetVars eqOrLessThan
+  | eqOrLessThan nSetBits k = Correct
   | otherwise = WrongResult nSetBits k
   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take nSetVars inList
+
+
+
+-- -----------
+-- testResultKlessthanN :: String -> Int -> Int -> SATResult
+-- testResultKlessthanN result k nSetVars
+--   | numLines == 1 = Unsatisfiable
+--   | otherwise = correct
+--   where numLines = length $ lines result
+--         inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+--         correct = case inList of
+--           Nothing -> ParseError
+--           Just x -> klessthanNCorrectHuh x k nSetVars
+--
+-- klessthanNCorrectHuh :: [Int] -> Int -> Int -> SATResult
+-- klessthanNCorrectHuh inList k nSetVars
+--   | nSetBits < k = Correct
+--   | otherwise = WrongResult nSetBits k
+--   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take nSetVars inList
 
 
 
