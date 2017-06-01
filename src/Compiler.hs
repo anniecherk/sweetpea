@@ -39,11 +39,14 @@ chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inL
 -- trialIndexes = map (\y -> filter (\x -> rem x trialLength == (rem y trialLength)) inList) transStates
 --
 -- newVars = chunkify (getNFresh (maximum inList) $ ((length transStates) ^ 2) * numTransitions) (numTransitions)
---
+-- transitions = concatMap (\x -> map (\y -> zip x (tail y)) trialIndexes) trialIndexes
+-- -- and for the latest monstrosity may I suggest:
+-- boundVarsCNF = concat $ zipWith (\x y -> concat $ zipWith (\(a,b) var -> aDoubleImpliesBandC var a b) x y) transitions newVars
 
--- [(maximum inList)+1 .. (maximum inList) + numTransitions]
 
 
+
+-- (concat $ zipWith3 aDoubleImpliesBandC circleCircleVars circle (tail circle))
 
 
 
