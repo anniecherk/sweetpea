@@ -43,67 +43,10 @@ chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inL
 -- -- and for the latest monstrosity may I suggest:
 -- boundVarsCNF = concat $ zipWith (\x y -> concat $ zipWith (\(a,b) var -> aDoubleImpliesBandC var a b) x y) transitions newVars
 
-
-
-
--- (concat $ zipWith3 aDoubleImpliesBandC circleCircleVars circle (tail circle))
-
-
-
-
-
---
--- level1 = head $ inputFactors !! factorToBalance
--- level2 = head $ tail $ inputFactors !! factorToBalance
---
---
---
--- --need to "wind back" by trialLength because 0..n-1 not 1..n. Janky janky janky
--- circle = filter (\x -> rem x trialLength == (rem level1 trialLength)) inList
--- square = filter (\x -> rem x trialLength == (rem level2 trialLength)) inList
---
--- -- THESE ARE THE TRANSITION PAIRS
--- circleCircle = zipWith (\x y -> [x, y]) circle (tail circle)
--- squareSquare = zipWith (\x y -> [x, y]) square (tail square)
--- circleSquare = zipWith (\x y -> [x, y]) circle (tail square)
--- squareCircle = zipWith (\x y -> [x, y]) circle (tail square)
-
-
--- -- Create new variables to represent these pairs & bind them with aDoubleImpliesBandC, ie <newvar> <=> [x and y]
--- circleCircleVars = [(maximum inList)+1 .. (maximum inList) + lengthTransitionPairs]
--- squareSquareVars = [(maximum circleCircleVars)+1 .. (maximum circleCircleVars) + lengthTransitionPairs]
--- circleSquareVars = [(maximum squareSquareVars)+1 .. (maximum squareSquareVars) + lengthTransitionPairs]
--- squareCircleVars = [(maximum circleSquareVars)+1 .. (maximum circleSquareVars) + lengthTransitionPairs]
---
--- -- binding
--- bindingCNFs = (concat $ zipWith3 aDoubleImpliesBandC circleCircleVars circle (tail circle))
---            ++ (concat $ zipWith3 aDoubleImpliesBandC circleCircleVars circle (tail circle))
-
-
-
-
--- cVal = andCNF [a, b]
--- cNegVal = nAndCNF a b
--- cImpliescVal = distribute (-c) cVal
--- cValImpliesC = distribute c cNegVal
-
-
--- THESE ARE THE POSITIVE VALUES --  TODO that is definitely wrong, and is [[x], [y]] brain is melting
--- -- THESE ARE THE NEGATIVE VALUES
--- -- zipWith (\x y -> nAndCNF x y) circle (tail circle)
---
--- --CREATE NEW VARS
---
--- -- this is horrible
--- as = [(nVars+1).. (nVars + (length circleCircle))]
--- bs = [(maximum as)+1.. (maximum as) + (length circleCircle)]
--- cs = [(maximum bs)+1.. (maximum bs) + (length circleCircle)]
--- ds = [(maximum cs)+1.. (maximum cs) + (length circleCircle)]
-
--- -- we're going to get through this, now let's do values
-
--- -- okay hang in there, now doubleImplies with the values
-
+-- -- almost done, now just assert exactly k of each of the newNVars
+-- --TODO: is this derived somehow?
+-- numEachTransitionsIsTrue = 1
+-- map (\x -> assertKofN numEachTransitionsIsTrue x) newVars
 
 
 -- TODO: handle not even multiples of transitions (+/- 1 perhaps)  --> wont that always be true
