@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, halfAdder, fullAdder, rippleCarry, popCountCompute, popCountLayer, popCount
-, toNegTwosComp, andCNF, assertKgreaterthanN
+, toNegTwosComp, andCNF, assertKgreaterthanN, distribute, aDoubleImpliesBandC
 , assertKofN, assertKofwhichN, assertKlessthanN, subtract', nAndCNF
 , doubleImplies )
 where
@@ -25,8 +25,8 @@ type CNF = [[Int]]
 -- inputFactors = [[1, 2, 3], [4, 5]]
 -- factorToBalance = 1
 -- trialLength = length $ concat inputFactors
--- inList = [1.. (trialLength*(4+1))] -- because 4 for each one to show up once, and +1 because trans = trials - 1. This is the SMALLEST example with 2 levels O_o
--- nVars = 25
+-- inList = [1.. (trialLength*(4+1))] -- because 4 for each combo to show up once, and +1 because transitions = trials - 1. This is the SMALLEST example with 2 levels O_o
+-- nVars = length inList                            -- (ie 00 01 10 11)
 --
 -- level1 = head $ inputFactors !! factorToBalance
 -- level2 = head $ tail $ inputFactors !! factorToBalance
@@ -37,16 +37,28 @@ type CNF = [[Int]]
 -- circle = filter (\x -> rem x trialLength == (rem level1 trialLength)) inList
 -- square = filter (\x -> rem x trialLength == (rem level2 trialLength)) inList
 --
--- -- THESE ARE THE POSITIVE VALUES TODO that is definitely wrong, and is [[x], [y]] brain is melting
--- circleCircle = map (\(x, y) -> [x, y]) $ zip circle (tail circle)
--- squareSquare = map (\(x, y) -> [x, y]) $ zip square (tail square)
--- circleSquare = map (\(x, y) -> [x, y]) $ zip circle (tail square)
--- squareCircle = map (\(x, y) -> [x, y]) $ zip circle (tail square)
+-- THESE ARE THE TRANSITION PAIRS
+-- circleCircle = zipWith (\x y -> [x, y]) circle (tail circle)
+-- squareSquare = zipWith (\x y -> [x, y]) square (tail square)
+-- circleSquare = zipWith (\x y -> [x, y]) circle (tail square)
+-- squareCircle = zipWith (\x y -> [x, y]) circle (tail square)
 --
+-- Create new variables to represent these pairs & bind them with doubleImplies, ie <newvar> <=> [x and y]
+
+
+
+
+-- cVal = andCNF [a, b]
+-- cNegVal = nAndCNF a b
+-- cImpliescVal = distribute (-c) cVal
+-- cValImpliesC = distribute c cNegVal
+
+
+-- THESE ARE THE POSITIVE VALUES --  TODO that is definitely wrong, and is [[x], [y]] brain is melting
 -- -- THESE ARE THE NEGATIVE VALUES
--- -- map (\(x, y) -> nAndCNF x y) $ zip circle (tail circle)
+-- -- zipWith (\x y -> nAndCNF x y) circle (tail circle)
 --
--- CREATE NEW VARS
+-- --CREATE NEW VARS
 --
 -- -- this is horrible
 -- as = [(nVars+1).. (nVars + (length circleCircle))]
@@ -71,6 +83,10 @@ type CNF = [[Int]]
 -- transitionConstraint inputFactors factorToBalance
 
 
+-- a <=> (b and c)  = (-a v b) ^ (-a v c) ^ (a v -b v -c)
+-- Thanks wolfram alpha :heart: (see note: wolfram_doubleimplies.txt)
+aDoubleImpliesBandC :: Int -> Int -> Int -> CNF
+aDoubleImpliesBandC a b c = [[-a, b], [-a, c], [a, -b, -c]]
 
 
 -- TODO: possible off-by-one, careful!

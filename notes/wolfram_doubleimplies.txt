@@ -1,0 +1,12 @@
+logical biconditional (double implication)
+`<->`
+is XNOR (according to wolfram)
+
+so double-implies of ` a <=> (b and c)` is:
+`a XNOR (b AND c)`
+
+(and it's symmetric to `(b AND c) XNOR a`)
+
+=> (according to WA)
+
+(-a v b) ^ (-a v c) ^ (a v -b v -c)
