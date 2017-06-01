@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, halfAdder, fullAdder, rippleCarry, popCountCompute, popCountLayer, popCount
-, toNegTwosComp, andCNF, assertKgreaterthanN, distribute, aDoubleImpliesBandC
+, toNegTwosComp, andCNF, assertKgreaterthanN, distribute, aDoubleImpliesBandC, getNFresh, chunkify
 , assertKofN, assertKofwhichN, assertKlessthanN, subtract', nAndCNF
 , doubleImplies )
 where
@@ -15,24 +15,33 @@ type CNF = [[Int]]
 
 
 
+-- these two are candidates for unit testing
+
+getNFresh :: Int -> Int -> [Int]
+getNFresh currentMax n = [currentMax+1 .. currentMax + n]
+
+-- chunks a list into chunkSize sized chunks
+chunkify :: [Int] -> Int -> [[Int]]
+chunkify [] _ = []
+chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
 
 
-
-
-
-
-
+--
 -- inputFactors = [[1, 2, 3], [4, 5]]
 -- factorToBalance = 1
+-- transStates = inputFactors !! factorToBalance
 -- trialLength = length $ concat inputFactors
 -- numTransitions = 4
 -- inList = [1.. (trialLength*(numTransitions+1))] -- because 4 for each combo to show up once, and +1 because transitions = trials - 1. This is the SMALLEST example with 2 levels O_o
 -- nVars = length inList                            -- (ie 00 01 10 11)
+--
+-- -- this grabs all the indices of the things we want transitions of (ie, [4, 9, 15, etc] and [5, 10, 15, etc])
+-- trialIndexes = map (\y -> filter (\x -> rem x trialLength == (rem y trialLength)) inList) transStates
+--
+-- newVars = chunkify (getNFresh (maximum inList) $ ((length transStates) ^ 2) * numTransitions) (numTransitions)
+--
 
--- this grabs all the indices of the things we want transitions of (ie, [4, 9, 15, etc] and [5, 10, 15, etc])
--- trialIndexes = map (\y -> filter (\x -> rem x trialLength == (rem y trialLength)) inList) $ inputFactors !! factorToBalance
-
--- [(maximum inList)+1 .. (maximum inList) + lengthTransitionPairs]
+-- [(maximum inList)+1 .. (maximum inList) + numTransitions]
 
 
 
