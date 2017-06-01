@@ -1,6 +1,6 @@
 module Compiler
 ( CNF, halfAdder, fullAdder, rippleCarry, popCountCompute, popCountLayer, popCount
-, toNegTwosComp, andCNF
+, toNegTwosComp, andCNF, assertKgreaterthanN
 , assertKofN, assertKofwhichN, assertKlessthanN, subtract', nAndCNF
 , doubleImplies )
 where
@@ -97,22 +97,27 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
 ------------------------------------------------
 -- k < n  === k + (-n) < 0
 -- k is the desiredCount
--- n is the output of popcount of the inList --BUG THIS HAS NOT BEEN TESTED
+-- n is the output of popcount of the inList
 assertKlessthanN :: Int -> [Int] -> CNF
-assertKlessthanN desiredCount inList = subtract' k res nVars
+assertKlessthanN desiredCount inList = assertKlessorgreaterthanN desiredCount inList "less"
+
+-- k > n === n + (-k) < 0
+assertKgreaterthanN :: Int -> [Int] -> CNF
+assertKgreaterthanN desiredCount inList = assertKlessorgreaterthanN desiredCount inList "greater"
+
+assertKlessorgreaterthanN :: Int -> [Int] -> String -> CNF
+assertKlessorgreaterthanN desiredCount inList which
+  | which == "less"    = subtract' k res nVars
+  | which == "greater" = subtract' res k nVars
 -- use the inList to get n : this is the output of popCount
   where (cnf, res) = popCount inList
-        k = allocateBinary desiredCount (maximum inList) [] -- TODO DOES THIS NEED TO BE IN BINARY??? put desiredCount into binary: this means a list of vars
+        k = allocateBinary desiredCount (maximum inList) [] -- put desiredCount into binary: this means a list of vars (need it in binary to pass to adder)
         nVars = maximum res
         allocateBinary :: Int -> Int -> [Int] -> [Int]
         allocateBinary input fresh acc
           | input == 0 = acc
           | even input = allocateBinary (quot input 2) (fresh+1) ((-1*fresh):acc)
           | otherwise  = allocateBinary (quot input 2) (fresh+1) (fresh:acc)
-
-
-
-
 
 -- allocateBinary tests:
 -- allocateBinary 2 3 [] = [4,-3]
@@ -136,9 +141,13 @@ assertKlessthanN desiredCount inList = subtract' k res nVars
 -- (nCnf, twosCompN) = toNegTwosComp n nVars
 -- newNVars = maximum twosCompN
 
--- TODO
+
+
+-- k < n  === k + (-n) < 0
+-- k is the desiredCount
+-- n is the output of popcount of the inList
 subtract' :: [Int] -> [Int] -> Int -> CNF
-subtract' k n nVars = resultCnf
+subtract' k n nVars = subtractionCnf ++ assertion
   where (nCnf, twosCompN) = toNegTwosComp n nVars
         newNVars = maximum twosCompN -- we're not going to talk about how kludgy this is
         -- zero pad twosCompK until it's the same size as twosCompN
@@ -152,7 +161,9 @@ subtract' k n nVars = resultCnf
         finalNumberNVars = rcCin + 1 --this is the max after everything else is done, in need of refactor
         -- add them with a ripple carry
         -- accum c's s's                 a's      b's    cin     nVars            accum
-        (resultCnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf ++ rcCNF)
+        (subtractionCnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf ++ rcCNF)
+        -- assert that the top bit (the top carry out) is a 1 (meaning the number is negative in 2's comp)
+        assertion = [[-1 * maximum cs]]
 
 
 -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
