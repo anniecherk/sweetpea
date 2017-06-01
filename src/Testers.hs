@@ -1,7 +1,7 @@
 module Testers
 ( showDIMACS, showCNF, testResultPopCount, testResultKandN, testRippleCarryDIMACS, solnRippleCarry, rippleCarryAsBsCin, rippleCarryAsBsCinList
 , andCNF, testHalfAdderDIMACS, testFullAdderDIMACS, solnFullAdder, computeSolnFullAdder, rippleCarry
-, popCountCorrectHuh, kAndNCorrectHuh
+, popCountCorrectHuh, kAndNCorrectHuh, popCountAllKlessthanNDIMACS, popCountKlessthanDIMACS
 , popCountCompute, popCountLayer, popCount, popCountDIMACS, exhaust, popCountKDIMACS, popCountAllKDIMACS, SATResult(..)-- "exploration"
 )
 where
@@ -123,6 +123,7 @@ exhaust [x] = [[x], [-x]]
 exhaust (x:xs) = concatMap (\ys -> [x:ys, (-x):ys]) (exhaust xs)
 
 
+-- EXACTLY k of n need to be true vvv
 ---
 -- this version is for a particular k
 -- (ie ask the solver to find an assignmnet where k of n are true)
@@ -136,6 +137,20 @@ popCountKDIMACS numDigs k = showDIMACS (cond ++ cnf) (maximum vars)
 -- asserts every k from 0 to n
 popCountAllKDIMACS :: Int -> [String]
 popCountAllKDIMACS numDigs = map (popCountKDIMACS numDigs) [0.. numDigs]
+
+
+--- AT LEAST k of n need to be true vvv
+-- this version is for a particular k
+-- (ie ask the solver to find an assignmnet where k of n are true)
+-- note: there are many soln's to this! the solver just needs to find *a* solution
+popCountKlessthanDIMACS :: Int -> Int -> String
+popCountKlessthanDIMACS numDigs k = showDIMACS (cond ++ cnf) (maximum vars)
+  where (cnf, vars) = popCount [1.. numDigs]
+        cond = assertKlessthanN k [1..numDigs]
+-- and this is exhaustive, less tahn
+-- asserts every k from 0 to n
+popCountAllKlessthanNDIMACS :: Int -> [String]
+popCountAllKlessthanNDIMACS numDigs = map (popCountKlessthanDIMACS numDigs) [1.. numDigs]
 
 
 --------- Testing ! ------------------------------------------------------------

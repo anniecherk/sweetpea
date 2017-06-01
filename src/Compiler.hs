@@ -99,7 +99,7 @@ assertKofN k inList = map (:[]) assertion -- ++ accum
 -- k is the desiredCount
 -- n is the output of popcount of the inList --BUG THIS HAS NOT BEEN TESTED
 assertKlessthanN :: Int -> [Int] -> CNF
-assertKlessthanN desiredCount inList = fst $ subtract' k res nVars
+assertKlessthanN desiredCount inList = subtract' k res nVars
 -- use the inList to get n : this is the output of popCount
   where (cnf, res) = popCount inList
         k = allocateBinary desiredCount (maximum inList) [] -- TODO DOES THIS NEED TO BE IN BINARY??? put desiredCount into binary: this means a list of vars
@@ -137,8 +137,8 @@ assertKlessthanN desiredCount inList = fst $ subtract' k res nVars
 -- newNVars = maximum twosCompN
 
 -- TODO
-subtract' :: [Int] -> [Int] -> Int -> (CNF, [Int])
-subtract' k n nVars = ([[]], [])
+subtract' :: [Int] -> [Int] -> Int -> CNF
+subtract' k n nVars = resultCnf
   where (nCnf, twosCompN) = toNegTwosComp n nVars
         newNVars = maximum twosCompN -- we're not going to talk about how kludgy this is
         -- zero pad twosCompK until it's the same size as twosCompN
@@ -147,12 +147,12 @@ subtract' k n nVars = ([[]], [])
         kCnf = map (\x -> [-x]) zeroPadding --"and" the new vars in their negative form
 
         rcCin = 1 + maximum zeroPadding
-        rcCNF = [-rcCin]
+        rcCNF = [[-rcCin]]
 
         finalNumberNVars = rcCin + 1 --this is the max after everything else is done, in need of refactor
         -- add them with a ripple carry
         -- accum c's s's                 a's      b's    cin     nVars            accum
-        (cnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf)
+        (resultCnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf ++ rcCNF)
 
 
 -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
@@ -172,7 +172,7 @@ toNegTwosComp input nVars = (cnf, ss)
         oneVars = [(length input + nVars + 2).. ((2*length input) + nVars + 2)] --TODO: aaaand it's time for the state monad
         cin = 1 + maximum oneVars
       -- accum c's s's                     a's      b's    cin nVars       accum
-        (cnf, _, ss) = rippleCarry flippedBitsVars oneVars cin cin (leadingOneCNF ++ flippedBitsCNF)
+        (cnf, _, ss) = rippleCarry flippedBitsVars oneVars cin cin (leadingOneCNF ++ flippedBitsCNF ++ [[-cin]])
 
 
 

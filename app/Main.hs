@@ -48,14 +48,23 @@ validate (WrongResult x y) = "expected " ++ show x ++ " but got " ++ show y
 validate ParseError = "oh no, parse error!"
 
 
-processNandK :: [String] -> (Int -> Int -> Bool) -> String -> IO ()
-processNandK args eqOrLessThan dirName = do
+processNandKTesting :: [String] -> (Int -> Int -> Bool) -> String -> IO ()
+processNandKTesting args eqOrLessThan dirName = do
     fileList <- getDirectoryContents dirName
     results <- mapM (doTestKandN eqOrLessThan . (dirName ++)) $ drop 2 fileList
     if length args == 2 && (args !! 1) == "v"
     then mapM_ putStrLn results
     else mapM_ putStrLn $ filter (/="Correct!") results
     putStrLn "Done testing"
+
+processNandKGeneration :: [String] -> (Int -> [String]) -> String -> IO ()
+processNandKGeneration args whichGenerator dirName = do
+        let n = if length args == 2
+                then read (head (tail args)) :: Int
+                else 2                                                                        -- zipping index for file names
+                -- TODO: refactor to zipWithM_
+        mapM_ (\(i, x) -> writeFile (dirName ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ whichGenerator n
+        putStrLn "Done generating tests"
 
 
 splitOnArgs :: [String] -> IO ()
@@ -90,27 +99,14 @@ splitOnArgs args
       -- 6 specifies the length of the sequence we're exhausitvely validating
       -- defaults to 2
       -- popcount is tested by setting the inputs, and validating what they add to!
-        | head args == "generateKofN"
-        = do
-            let n = if length args == 2
-                    then read (head (tail args)) :: Int
-                    else 2                                                                        -- zipping index for file names
-                    -- TODO: refactor to zipWithM_
-            mapM_ (\(i, x) -> writeFile ("KofNTests/" ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountAllKDIMACS n
-            putStrLn "Done generating tests"
+        | head args == "generateKofN" = processNandKGeneration args popCountAllKDIMACS "KofNTests/"
 
-        | head args == "generateKlessthanN"
-        = do
-            let n = if length args == 2
-                    then read (head (tail args)) :: Int
-                    else 2                                                                        -- zipping index for file names
-                    -- TODO: refactor to zipWithM_
-            mapM_ (\(i, x) -> writeFile ("KlessthanNTests/" ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ popCountAllKDIMACS n
-            putStrLn "Done generating tests"
+        | head args == "generateKlessthanN" = processNandKGeneration args popCountAllKlessthanNDIMACS "KlessthanNTests/"
+
       -----
-        | head args == "testKofN" = processNandK args (==) "KofNResults/"
+        | head args == "testKofN" = processNandKTesting args (==) "KofNResults/"
       -----
-        | head args == "testKlessthanN" = processNandK args (<) "KlessthanNResults/"
+        | head args == "testKlessthanN" = processNandKTesting args (<) "KlessthanNResults/"
 
 
 
