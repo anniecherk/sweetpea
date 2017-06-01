@@ -25,8 +25,21 @@ type CNF = [[Int]]
 -- inputFactors = [[1, 2, 3], [4, 5]]
 -- factorToBalance = 1
 -- trialLength = length $ concat inputFactors
--- inList = [1.. (trialLength*(4+1))] -- because 4 for each combo to show up once, and +1 because transitions = trials - 1. This is the SMALLEST example with 2 levels O_o
+-- numTransitions = 4
+-- inList = [1.. (trialLength*(numTransitions+1))] -- because 4 for each combo to show up once, and +1 because transitions = trials - 1. This is the SMALLEST example with 2 levels O_o
 -- nVars = length inList                            -- (ie 00 01 10 11)
+
+-- this grabs all the indices of the things we want transitions of (ie, [4, 9, 15, etc] and [5, 10, 15, etc])
+-- trialIndexes = map (\y -> filter (\x -> rem x trialLength == (rem y trialLength)) inList) $ inputFactors !! factorToBalance
+
+-- [(maximum inList)+1 .. (maximum inList) + lengthTransitionPairs]
+
+
+
+
+
+
+
 --
 -- level1 = head $ inputFactors !! factorToBalance
 -- level2 = head $ tail $ inputFactors !! factorToBalance
@@ -37,13 +50,22 @@ type CNF = [[Int]]
 -- circle = filter (\x -> rem x trialLength == (rem level1 trialLength)) inList
 -- square = filter (\x -> rem x trialLength == (rem level2 trialLength)) inList
 --
--- THESE ARE THE TRANSITION PAIRS
+-- -- THESE ARE THE TRANSITION PAIRS
 -- circleCircle = zipWith (\x y -> [x, y]) circle (tail circle)
 -- squareSquare = zipWith (\x y -> [x, y]) square (tail square)
 -- circleSquare = zipWith (\x y -> [x, y]) circle (tail square)
 -- squareCircle = zipWith (\x y -> [x, y]) circle (tail square)
+
+
+-- -- Create new variables to represent these pairs & bind them with aDoubleImpliesBandC, ie <newvar> <=> [x and y]
+-- circleCircleVars = [(maximum inList)+1 .. (maximum inList) + lengthTransitionPairs]
+-- squareSquareVars = [(maximum circleCircleVars)+1 .. (maximum circleCircleVars) + lengthTransitionPairs]
+-- circleSquareVars = [(maximum squareSquareVars)+1 .. (maximum squareSquareVars) + lengthTransitionPairs]
+-- squareCircleVars = [(maximum circleSquareVars)+1 .. (maximum circleSquareVars) + lengthTransitionPairs]
 --
--- Create new variables to represent these pairs & bind them with doubleImplies, ie <newvar> <=> [x and y]
+-- -- binding
+-- bindingCNFs = (concat $ zipWith3 aDoubleImpliesBandC circleCircleVars circle (tail circle))
+--            ++ (concat $ zipWith3 aDoubleImpliesBandC circleCircleVars circle (tail circle))
 
 
 
