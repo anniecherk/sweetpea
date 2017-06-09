@@ -6,7 +6,7 @@
 
 | Flag       | Arguments                                             | Example  |
 | -------    |:----------------------------------------------------: | :-------:|
-| exhaustive | constraint name, object set name                      | ./test exhaustive k-less-than-n simple-object |
+| exhaustive | constraint name, object set name                      | ./test exhaustive fewer-than-k-in-a-row simple-object |
 | random     | # constraint draws, # argument draws, object set name | ./test random 10 10 simple-object |
 | on demand  | specification file path, object set name              | ./test on-demand specification-file simple-object |
 | help       |                                                       | ./test help    |
@@ -109,24 +109,24 @@ Q: what % random constraints combos are unsatisfiable?
 
 # Object Sets
 
-Four object sets available for testing. Each of these is fully-crossed, and each one has 20 instances of each possible object.
+Four object sets available for testing. Each of these is fully-crossed, and each one has 5 instances of each possible object.
 
-1. The simplest possible objects: Each has a single feature "color" with 2 levels. There are 2*20 = 40 objects in this set.
+1. The simplest possible objects: Each has a single feature "color" with 2 levels. There are 2*5 = 10 objects in this set.
 	- `red`
 	- `blue`
 
-2. Objects with more values: Each has a single features "color" with 3 levels. There are 3*20 = 60 objects in this set.
+2. Objects with more values: Each has a single features "color" with 3 levels. There are 3*5 = 15 objects in this set.
 	- `red`
 	- `blue`
 	- `green`
 
-3. Objects with more fields: Each has two features "color" and "shape" each with two levels. There are 4*20 = 80 objects in this set.
+3. Objects with more fields: Each has two features "color" and "shape" each with two levels. There are 4*5 = 20 objects in this set.
 	- `red square`
 	- `blue square`
 	- `red circle`
 	- `blue circle`
 
-4. A complicated object set: Each has 3 features "color", "shape", "saturation", each with 2 or 3 levels: 20*12 = 240 objects in this set.
+4. A complicated object set: Each has 3 features "color", "shape", "saturation", each with 2 or 3 levels: 5*12 = 60 objects in this set.
 	- `dark red circle`
 	- `light red circle`
 	- `dark red square`
@@ -139,6 +139,7 @@ Four object sets available for testing. Each of these is fully-crossed, and each
 	- `light blue square`
 	- `dark blue triangle`
 	- `light blue triangle`
+5. Same as #4 but with 20 instances instead of 5, for a total of 12*20 = 240 objects
 
 	----------------------------------------------------------------------------
 # .test-all specification:
@@ -148,8 +149,8 @@ This is a wrapper that runs lots of relevant tests. Modes set by command line ar
 ## Default (no args)
 - Exhaustive Tests
   - For every constraint
-    - For every object test set
-- Random Tests
+    - For every object test set (except #5)
+- Random Tests, test set #5
   - 50 constraint draws
     - 50 argument draws
 
