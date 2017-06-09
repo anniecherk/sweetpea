@@ -60,6 +60,7 @@ Q: what % random constraints combos are unsatisfiable?
 
 
 ## compile
+- testing flag: if we're testing then don't run validator's contradiction search, otherwise do and bail early on failure
 - function for every kind of supported constraint, produces a CNF
 
 ## codegen
@@ -72,17 +73,19 @@ Q: what % random constraints combos are unsatisfiable?
 - use the spec file to match on which validation functions to call
 	- call those functions with contents of result file
 
+## TODO: translate result to high level
+
 ## driver : handles all IO
 - specify
 	- inputs: arguments from .test
 	- --> parse, spec, file gen
 	- outputs: n \*.spec files
 - compile
-	- inputs: spec file
+	- inputs: spec file, flag about whether we're in testing mode
 	- --> parse, compile, code gen
 	- outputs: 1 \*.cnf file
 - validate
-	- inputs: spec file + result file
+	- inputs: spec file + result file, flag about verbosity
 	- --> parse, validate
 	- outputs:
 		- writes failed files (.spec & .cnf) to `failedTests` directory
@@ -104,6 +107,7 @@ Q: what % random constraints combos are unsatisfiable?
 		1. "constraint" with string name of constraint
 		2. all other arguments -> names & values
 			- this could be a list of dictionaries if that's easier to parse
+			- need to specify level & factor because level names aren't guaranteed to be unique across factors
 
 --------------------------------------------------------------------
 
