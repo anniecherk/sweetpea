@@ -115,22 +115,23 @@ Q: what % random constraints combos are unsatisfiable?
 
 Four object sets available for testing. Each of these is fully-crossed, and each one has 5 instances of each possible object.
 
-1. The simplest possible objects: Each has a single feature "color" with 2 levels. There are 2*5 = 10 objects in this set.
+1. **simple-objects** The simplest possible objects: Each has a single feature "color" with 2 levels. There are 2*5 = 10 objects in this set.
 	- `red`
 	- `blue`
 
-2. Objects with more values: Each has a single features "color" with 3 levels. There are 3*5 = 15 objects in this set.
+2. **level-objects** Objects with more values: Each has a single features "color" with 4 levels. There are 4*5 = 20 objects in this set.
 	- `red`
 	- `blue`
 	- `green`
+	- `yellow`
 
-3. Objects with more fields: Each has two features "color" and "shape" each with two levels. There are 4*5 = 20 objects in this set.
+3. **feature-objects** Objects with more fields: Each has two features "color" and "shape" each with two levels. There are 4*5 = 20 objects in this set.
 	- `red square`
 	- `blue square`
 	- `red circle`
 	- `blue circle`
 
-4. A complicated object set: Each has 3 features "color", "shape", "saturation", each with 2 or 3 levels: 5*12 = 60 objects in this set.
+4. **complicated-objects** A complicated object set: Each has 3 features "color", "shape", "saturation", each with 2 or 3 levels: 5*12 = 60 objects in this set.
 	- `dark red circle`
 	- `light red circle`
 	- `dark red square`
@@ -143,7 +144,7 @@ Four object sets available for testing. Each of these is fully-crossed, and each
 	- `light blue square`
 	- `dark blue triangle`
 	- `light blue triangle`
-5. Same as #4 but with 20 instances instead of 5, for a total of 12*20 = 240 objects
+5. **random-test-objects** Same as #4 but with 20 instances instead of 5, for a total of 12*20 = 240 objects
 
 	----------------------------------------------------------------------------
 # .test-all specification:
