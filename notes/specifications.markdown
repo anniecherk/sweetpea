@@ -54,6 +54,7 @@ Q: what % random constraints combos are unsatisfiable?
   - total number of objects
   - constraint representation DS, list of
 	- name :: String
+	- arguments :: ?? 
 	- compiler function to call (need to make a union type)
 	- validation function to call (need to make a union type)
 	- NOTE: n .spec constraints may compile to MORE than n actual constraints
