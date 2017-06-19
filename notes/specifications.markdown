@@ -6,7 +6,7 @@
 
 | Flag       | Arguments                                             | Example  |
 | -------    |:----------------------------------------------------: | :-------:|
-| exhaustive | constraint name, object set name                      | ./test exhaustive k-less-than-n simple-object |
+| exhaustive | constraint name, object set name                      | ./test exhaustive fewer-than-k-in-a-row simple-object |
 | random     | # constraint draws, # argument draws, object set name | ./test random 10 10 simple-object |
 | on demand  | specification file path, object set name              | ./test on-demand specification-file simple-object |
 | help       |                                                       | ./test help    |
@@ -54,12 +54,14 @@ Q: what % random constraints combos are unsatisfiable?
   - total number of objects
   - constraint representation DS, list of
 	- name :: String
+	- arguments :: ?? 
 	- compiler function to call (need to make a union type)
 	- validation function to call (need to make a union type)
 	- NOTE: n .spec constraints may compile to MORE than n actual constraints
 
 
 ## compile
+- testing flag: if we're testing then don't run validator's contradiction search, otherwise do and bail early on failure
 - function for every kind of supported constraint, produces a CNF
 
 ## codegen
@@ -72,17 +74,19 @@ Q: what % random constraints combos are unsatisfiable?
 - use the spec file to match on which validation functions to call
 	- call those functions with contents of result file
 
+## TODO: translate result to high level
+
 ## driver : handles all IO
 - specify
 	- inputs: arguments from .test
 	- --> parse, spec, file gen
 	- outputs: n \*.spec files
 - compile
-	- inputs: spec file
+	- inputs: spec file, flag about whether we're in testing mode
 	- --> parse, compile, code gen
 	- outputs: 1 \*.cnf file
 - validate
-	- inputs: spec file + result file
+	- inputs: spec file + result file, flag about verbosity
 	- --> parse, validate
 	- outputs:
 		- writes failed files (.spec & .cnf) to `failedTests` directory
@@ -104,29 +108,31 @@ Q: what % random constraints combos are unsatisfiable?
 		1. "constraint" with string name of constraint
 		2. all other arguments -> names & values
 			- this could be a list of dictionaries if that's easier to parse
+			- need to specify level & factor because level names aren't guaranteed to be unique across factors
 
 --------------------------------------------------------------------
 
 # Object Sets
 
-Four object sets available for testing. Each of these is fully-crossed, and each one has 20 instances of each possible object.
+Four object sets available for testing. Each of these is fully-crossed, and each one has 5 instances of each possible object.
 
-1. The simplest possible objects: Each has a single feature "color" with 2 levels. There are 2*20 = 40 objects in this set.
+1. **simple-objects** The simplest possible objects: Each has a single feature "color" with 2 levels. There are 2*5 = 10 objects in this set.
 	- `red`
 	- `blue`
 
-2. Objects with more values: Each has a single features "color" with 3 levels. There are 3*20 = 60 objects in this set.
+2. **level-objects** Objects with more values: Each has a single features "color" with 4 levels. There are 4*5 = 20 objects in this set.
 	- `red`
 	- `blue`
 	- `green`
+	- `yellow`
 
-3. Objects with more fields: Each has two features "color" and "shape" each with two levels. There are 4*20 = 80 objects in this set.
+3. **feature-objects** Objects with more fields: Each has two features "color" and "shape" each with two levels. There are 4*5 = 20 objects in this set.
 	- `red square`
 	- `blue square`
 	- `red circle`
 	- `blue circle`
 
-4. A complicated object set: Each has 3 features "color", "shape", "saturation", each with 2 or 3 levels: 20*12 = 240 objects in this set.
+4. **complicated-objects** A complicated object set: Each has 3 features "color", "shape", "saturation", each with 2 or 3 levels: 5*12 = 60 objects in this set.
 	- `dark red circle`
 	- `light red circle`
 	- `dark red square`
@@ -139,6 +145,7 @@ Four object sets available for testing. Each of these is fully-crossed, and each
 	- `light blue square`
 	- `dark blue triangle`
 	- `light blue triangle`
+5. **random-test-objects** Same as #4 but with 20 instances instead of 5, for a total of 12*20 = 240 objects
 
 	----------------------------------------------------------------------------
 # .test-all specification:
@@ -148,8 +155,8 @@ This is a wrapper that runs lots of relevant tests. Modes set by command line ar
 ## Default (no args)
 - Exhaustive Tests
   - For every constraint
-    - For every object test set
-- Random Tests
+    - For every object test set (except #5)
+- Random Tests, test set #5
   - 50 constraint draws
     - 50 argument draws
 
