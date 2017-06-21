@@ -1,5 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-module Parser -- ( decodeObjects, decodeConstraints )
+module Parser
+( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
+  , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
 where
 
 import Control.Monad (mzero)
@@ -11,7 +13,7 @@ import Data.Text
 type FactorPath = [String] -- an instance of a factorpath
 type FactorPaths = [FactorPath] --can hold all factorpaths
 
-data FullyCross = FullyCross FactorPaths Int deriving Show
+data FullyCross = FullyCross FactorPaths Int deriving (Show, Eq)
 instance FromJSON FullyCross where
   parseJSON (Object v) =
             FullyCross <$> v .: "applied_to"
@@ -24,7 +26,7 @@ data RawConstraint =
   AtLeastKInARow     FactorPaths Int |
   NoMoreThanKOutOfJ  FactorPaths Int Int |
   AtLeastKOutOfJ     FactorPaths Int Int |
-  BalanceTransitions FactorPaths deriving Show
+  BalanceTransitions FactorPaths deriving (Show, Eq)
 
 instance FromJSON RawConstraint where
     parseJSON (Object x) =
@@ -39,13 +41,25 @@ instance FromJSON RawConstraint where
 
 
 
-data HL_IR = HL_IR FactorPaths FullyCross [RawConstraint] deriving Show
+data HL_IR = HL_IR FactorPaths FullyCross [RawConstraint] deriving (Show, Eq)
 instance FromJSON HL_IR where
   parseJSON (Object v) =
             HL_IR <$> v .: "factorPaths"
                   <*> v .: "fullyCross"
                   <*> v .: "constraints"
   parseJSON _ = mzero
+
+
+-- just some suga to make testing cleaner
+
+decodeHL_IR :: BL.ByteString -> Maybe HL_IR
+decodeHL_IR = decode
+
+decodeFactorPaths :: BL.ByteString -> Maybe FactorPaths
+decodeFactorPaths = decode
+
+decodeRawConstraint :: BL.ByteString -> Maybe RawConstraint
+decodeRawConstraint = decode
 
 
 -- main :: IO ()
