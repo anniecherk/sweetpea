@@ -1,20 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Test.Tasty
-import Test.Tasty.SmallCheck as SC
-import Test.Tasty.QuickCheck as QC
 import Test.Tasty.HUnit
 
-import Data.List
-import Data.Ord
-import qualified Data.Sequence as Seq
 
 import Parser
 
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Parser Tests" [factorPathTests, rawConstraintsTests] --, fullSpecTests]
+tests = testGroup "Parser Tests" [factorPathTests, rawConstraintsTests, fullSpecTests]
 
 
 factorPathTests = testGroup "factorPathTests"
@@ -73,12 +68,6 @@ rawConstraintsTests = testGroup "rawConstraintsTests"
 
 
 fullSpecTests = testGroup "fullSpecTests"
-  -- [ testCase "NoMoreThanKInARow" $ decodeRawConstraint
-  --   "{ \"constraint\": \"NoMoreThanKInARow\", \
-  --   \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]], \
-  --   \  \"k\": 3}" @?= Just (NoMoreThanKInARow [["color", "lightColors", "pink"]] 3)
-  -- ]
-
   [ testCase "full example" $ decodeHL_IR fullTestString
      @?= Just (HL_IR [["color","darkColors","black"],["color","darkColors","pink"],
        ["color","lightColors","white"],["color","lightColors","pink"],["shape","circle"],
