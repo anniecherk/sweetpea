@@ -60,7 +60,3 @@ decodeFactorPaths = decode
 
 decodeRawConstraint :: BL.ByteString -> Maybe RawConstraint
 decodeRawConstraint = decode
-
-
--- main :: IO ()
--- main = BL.getContents >>= print .(decode :: BL.ByteString -> Maybe HL_IR)
