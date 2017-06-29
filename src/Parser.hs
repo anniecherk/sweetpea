@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Parser
-( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
-  , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
+( decodeHLIR, decodeFactorPaths, decodeRawConstraint
+  , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HLIR(..) )
 where
 
 import Control.Monad (mzero)
@@ -41,10 +41,10 @@ instance FromJSON RawConstraint where
 
 
 
-data HL_IR = HL_IR FactorPaths FullyCross [RawConstraint] deriving (Show, Eq)
-instance FromJSON HL_IR where
+data HLIR = HLIR FactorPaths FullyCross [RawConstraint] deriving (Show, Eq)
+instance FromJSON HLIR where
   parseJSON (Object v) =
-            HL_IR <$> v .: "factorPaths"
+            HLIR <$> v .: "factorPaths"
                   <*> v .: "fullyCross"
                   <*> v .: "constraints"
   parseJSON _ = mzero
@@ -52,8 +52,8 @@ instance FromJSON HL_IR where
 
 -- just some suga to make testing cleaner
 
-decodeHL_IR :: BL.ByteString -> Maybe HL_IR
-decodeHL_IR = decode
+decodeHLIR :: BL.ByteString -> Maybe HLIR
+decodeHLIR = decode
 
 decodeFactorPaths :: BL.ByteString -> Maybe FactorPaths
 decodeFactorPaths = decode

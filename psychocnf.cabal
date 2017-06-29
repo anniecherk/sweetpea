@@ -15,7 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Compiler, Testers, Parser, StatefulCompiler
+  exposed-modules:     Compiler, Testers, Parser, HLtoIL, ILtoLL
+                     , StatefulCompiler
                      , Specifier, CodeGen, Validator
   build-depends:       base >= 4.7 && < 5
                      , tuple
@@ -24,6 +25,7 @@ library
                      , bytestring
                      , transformers
                      , random
+                     , containers
                      -- , directory -- -1.3.1.1
   default-language:    Haskell2010
 
@@ -37,12 +39,18 @@ executable cnf
                      , split
   default-language:    Haskell2010
 
-test-suite cnf-test
+test-suite unitTests
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
   build-depends:       base
                      , psychocnf
+                     , containers
+                     , tasty
+                     , tasty-smallcheck
+                     , tasty-quickcheck
+                     , tasty-hunit
+
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N
   default-language:    Haskell2010
 

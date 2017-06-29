@@ -1,4 +1,4 @@
-module HL_to_IL
+module HLtoIL
 -- (Variables)
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
@@ -42,11 +42,11 @@ type LevelCollection = [Variable]
 type CellToVariableDict = M.Map FactorPath Variable
 type LevelToVariablesDict = M.Map FactorPath Variables
 
-data IL_Constraint =
-  IL_AssertCorrectAmount    Variables Int | --this is for like "we have 3 red balls"
-  IL_NoMoreThanKOutOfJ  Variables Int Int | -- rep "max in a row" here too
-  IL_AtLeastKOutOfJ     Variables Int Int | -- rep "min in a row" here too
-  IL_BalanceTransitions Variables Variable deriving (Show, Eq)
+data ILConstraint =
+  ILAssertCorrectAmount    Variables Int | --this is for like "we have 3 red balls"
+  ILNoMoreThanKOutOfJ  Variables Int Int | -- rep "max in a row" here too
+  ILAtLeastKOutOfJ     Variables Int Int | -- rep "min in a row" here too
+  ILBalanceTransitions Variables Variable deriving (Show, Eq)
 --
 -- data IL_IR = IL_IR { cellLookup :: CellToVariableDict -- this is how the NAME of a cell translates to a variable
 --                    , importantVars :: Variables -- important in that these are the ones we'll care about interpretting after SAT
@@ -56,12 +56,13 @@ data IL_Constraint =
 --                    , constraints :: [IL_Constraint]
 --                    } deriving (Show, Eq)
 
-type IL_IR = [IL_Constraint]
+type ILIR = [ILConstraint]
 
 
-translate_HL_to_IL :: HL_IR -> IL_IR
-translate_HL_to_IL (HL_IR factorPaths fullyCross rawConstraints) =
-  concatMap (`getIL_Constraint` levelLookUp) rawConstraints
+-- given a fully formed HLIR it produces a fully formed ILIR
+translateHLtoIL :: HLIR -> ILIR
+translateHLtoIL (HLIR factorPaths fullyCross rawConstraints) =
+  concatMap (`getILConstraint` levelLookUp) rawConstraints
   where levelSizes = getLevelSizes factorPaths fullyCross
         objectSize = getObjectSize levelSizes
         importantVars = getImportantVars objectSize
@@ -138,15 +139,15 @@ unwrapLevel applyPath levelLookUp = fromMaybe [] ( M.lookup applyPath levelLookU
 -- , AtLeastKOutOfJ [["shape","circle"]] 2 7,
 -- NoMoreThanKInARow [["color","lightColors","pink"]] 3]
 -- need to return IL_Constraint *List* because we allow shorthand of applying constraints over many levels
-getIL_Constraint :: RawConstraint -> LevelToVariablesDict -> [IL_Constraint]
-getIL_Constraint (NoMoreThanKInARow applyPaths k) levelLookUp
-  = map (\x-> IL_NoMoreThanKOutOfJ (unwrapLevel x levelLookUp) k k) applyPaths
-getIL_Constraint (AtLeastKInARow     applyPaths k) levelLookUp
-  = map (\x-> IL_AtLeastKOutOfJ (unwrapLevel x levelLookUp) k k) applyPaths
-getIL_Constraint (NoMoreThanKOutOfJ  applyPaths k j) levelLookUp
-  = map (\x-> IL_NoMoreThanKOutOfJ (unwrapLevel x levelLookUp) k j) applyPaths
-getIL_Constraint (AtLeastKOutOfJ     applyPaths k j) levelLookUp
-  = map (\x-> IL_AtLeastKOutOfJ (unwrapLevel x levelLookUp) k j) applyPaths
+getILConstraint :: RawConstraint -> LevelToVariablesDict -> [ILConstraint]
+getILConstraint (NoMoreThanKInARow applyPaths k) levelLookUp
+  = map (\x-> ILNoMoreThanKOutOfJ (unwrapLevel x levelLookUp) k k) applyPaths
+getILConstraint (AtLeastKInARow     applyPaths k) levelLookUp
+  = map (\x-> ILAtLeastKOutOfJ (unwrapLevel x levelLookUp) k k) applyPaths
+getILConstraint (NoMoreThanKOutOfJ  applyPaths k j) levelLookUp
+  = map (\x-> ILNoMoreThanKOutOfJ (unwrapLevel x levelLookUp) k j) applyPaths
+getILConstraint (AtLeastKOutOfJ     applyPaths k j) levelLookUp
+  = map (\x-> ILAtLeastKOutOfJ (unwrapLevel x levelLookUp) k j) applyPaths
 -- getIL_Constraint (BalanceTransitions applyPath) levelLookUp = IL_NoMoreThanKOutOfJ [0] 0 0 TODO: transitions are hard
 
 

@@ -1,10 +1,10 @@
-module IL_to_LL
+module ILtoLL
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
 where
 
 import Parser
-import HL_to_IL
+import HLtoIL
 import qualified Data.Map as M
 import Data.List (tails)
 
@@ -26,8 +26,8 @@ import Data.List (tails)
 
 
 data CompilerOp = LessThan Int | GreaterThan Int | Exactly Int
-type LL_Constraint = (CompilerOp, Variables)
-type LL_IR =[LL_Constraint]
+type LLConstraint = (CompilerOp, Variables)
+type LLIR =[LLConstraint]
 
 
 -- data IL_Constraint =
@@ -37,16 +37,16 @@ type LL_IR =[LL_Constraint]
 --   IL_BalanceTransitions Variables Variable deriving (Show, Eq)
 -- --
 -- TODO: handle balance transitions bc idk what to do now
-desugarConstraints :: IL_Constraint -> LL_IR
-desugarConstraints (IL_AssertCorrectAmount vars k) = [(Exactly k, vars)]
-desugarConstraints (IL_NoMoreThanKOutOfJ vars k j) =
+desugarConstraints :: ILConstraint -> LLIR
+desugarConstraints (ILAssertCorrectAmount vars k) = [(Exactly k, vars)]
+desugarConstraints (ILNoMoreThanKOutOfJ vars k j) =
   map (\x-> (GreaterThan k, x)) $ gather j vars
-desugarConstraints (IL_AtLeastKOutOfJ vars k j)    =
+desugarConstraints (ILAtLeastKOutOfJ vars k j)    =
   map (\x-> (LessThan k, x)) $ gather j vars
 
 
-il_to_ll :: IL_IR -> LL_IR
-il_to_ll = concatMap desugarConstraints
+ilToLl :: ILIR -> LLIR
+ilToLl = concatMap desugarConstraints
 
 -- thanks stackoverflow
 -- https://stackoverflow.com/questions/24599875/is-there-a-built-in-function-to-get-all-consecutive-subsequences-of-size-n-of-a

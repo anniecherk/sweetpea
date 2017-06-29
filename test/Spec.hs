@@ -5,11 +5,19 @@ import Test.Tasty.HUnit
 
 
 import Parser
+import HL_to_IL
+import IL_to_LL
 
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Parser Tests" [factorPathTests, rawConstraintsTests, fullSpecTests]
+tests = testGroup "Tests" [parserTests, hlToIlTests]
+
+hlToIlTests :: TestTree
+hlToIlTests = testGroup "HLtoIL Tests" [factorPathTests, rawConstraintsTests, fullSpecTests]
+
+parserTests :: TestTree
+parserTests = testGroup "Parser Tests" [factorPathTests, rawConstraintsTests, fullSpecTests]
 
 
 factorPathTests = testGroup "factorPathTests"
