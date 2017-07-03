@@ -1,0 +1,101 @@
+streams:
+    color stream
+		    light stream
+			        pink
+			        blue
+			        yellow
+		    dark stream
+			        blue
+			        black
+	  shape stream
+		    triangle
+		    circle
+		    triangle
+	  transition: light/dark color stream   // Q: is this the right granularity?
+		    [(color, light)  (color, light)]
+		    [(color, light)  (color, dark)]
+		    [(color, dark)   (color, light)]
+		    [(color, dark)   (color, dark)]
+        ALL (color, light) & drop (except / complement)
+
+        [(color, light, pink) (color, light, blue)]
+        [(color, light, pink) (color, light, pink)]
+        [(color, light, blue) (color, light, pink)]
+        [(color, light, blue) (color, light, blue)]
+
+
+// type of the trial
+// this defines the SHAPE of a trial, ie <color, _shape, transition>
+// the "design"
+base stream: cross (color) (shape) (transition: light/dark color )
+
+
+
+experiment:
+	apply constraint [0]
+	sequence
+    initialization
+		apply constraints[1]   // "blocks"
+			randomize
+				repeat twice
+					fully-cross base-stream
+		apply constraints[2]
+			randomize                                        // This is how you "weight" two different streams:
+				myBlock
+    termination
+
+myBlock:
+  sequence
+    repeat four times
+      dropAll (color lightColors) (fully-cross base-stream)
+    fully-cross base-stream
+
+
+
+
+
+
+            sequence
+              randomize
+                repeat four times
+                  dropAll (color lightColors) (fully-cross base-stream)
+              randomize
+                fully-cross base-stream
+
+                // randomize order of blocks : scope, items or blocks (sequence of sequence)
+
+
+
+// name with labels
+
+constraints:
+[    // constraint [0]
+[[ balance transitions:    light/dark color transition]]
+
+     // constraint [1]
+[[no more than 3 in a row, applied to *both*:            // meaning: no more than 3 light colors in a row, no more than 3 dark colors in a row
+	<light/dark color transition:   [(color, light) (color, light)]>  // maybe regex as pattern matching language
+	<light/dark color transition:   [(color, dark) (color, dark)]>],
+
+[at least 4 of every 8 should be, *either*:    // meaning: both pink & blue count towards the count of 4 in every 8
+	<color:    color, light, pink>
+	<color:    color, light, blue>]]  //--> compile from regex
+
+
+  any instead of .
+  ... instead of *
+
+ // constraint [2]
+[ ...]
+]
+
+
+  both / allOf
+  either / anyOf
+
+
+
+// before / after?
+// explicit padding trials?
+// Q: when more than 1 transition constraint, how do you know how many padding trials to add?
+// Q: transition variations: like 3 in a row, or every third
