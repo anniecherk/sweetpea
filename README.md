@@ -1,6 +1,9 @@
-This is a project that takes high-level constraints, translates them into DIMACS CNF (using a Tseytin transformation!) to feed through a SAT solver, and then translates the results back into something intelligible at a high-level. 
+Psyscript is a sequence processing language; it is a solver aided DSL.
 
 It isn't done!
+
+This is a project that takes high-level constraints, translates them into DIMACS CNF (using a Tseytin transformation!) to feed through a SAT solver, and then translates the results back into something intelligible at a high-level. 
+
 
 Here's what works so far:
 
