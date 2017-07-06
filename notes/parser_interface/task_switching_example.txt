@@ -37,25 +37,24 @@ streams:
 
 // "design"
 // stream shape is an implied "cross ALL"
-base-stream: fully-cross  task
-                          response
-                          feature-correlation
-                          congruency
-                          irrelevant-feature-transition
-                          transition: task
-                          transition: response
+base-stream: cross  task
+                    response
+                    feature-correlation
+                    congruency
+                    irrelevant-feature-transition
+                    transition: task
+                    transition: response
 
 
-experiment: apply constraints[0]
-              base-stream
-
-
-constraints: 
-[    // constraint [0]
+constraints:
 [[ balance transitions:    task],
  [ balance transitions:    response],
  [ no more than 7 in a row, applied to: task]]
 ]
 
+// or
+base-stream: cross ALL streams  //cross all only works on the root- how is this going to work for the other example?
 
-// Q: do you want to see transitions in the final result?ls
+
+experiment: apply constraints
+              base-stream

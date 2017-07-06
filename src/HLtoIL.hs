@@ -4,7 +4,7 @@ module HLtoIL
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
 where
 
-import Parser
+import ParserDS
 import qualified Data.Map as M
 import Data.Maybe
 

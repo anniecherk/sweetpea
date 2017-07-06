@@ -1,0 +1,146 @@
+-- the following VARS are now in scope: [color, c-light, c-l-p, c-l-b, c-l-y, c-dark, c-d-b, c-d-b, shape, s-t, s-c, s-t]
+
+-- types (at the high level):
+-- variables, transition variables
+-- blocks (ie experiment blocks)
+-- these need to desugar to "scope" the sequence correctly into lists with what gets applied where
+-- constraints are keywords- applied to levels BUT what *range* of those levels depends on the exp. structure
+-- must have: "root" of the experiment, and "base-stream"
+-- everything else, is just a label
+-- any label at the top level must have a type on it
+
+-- decisions:
+-- https://docs.python.org/3.3/reference/lexical_analysis.html
+-- types & typechecking
+-- valid label names
+-- in order? ie labels must be in scope before they're used?
+
+-- comment characters: probably # to match python though -- is also a sensible option
+-- is making white space semantic a good idea? if so:
+-- need to define white space "whitestuff" (which chars)
+-- probably want explicit line joins in case things go long (not an immediately important feature)
+
+-- support for future functions?
+-- need to either define my combinators as keywords or as instances of functions
+-- list all keywords
+-- how will we distinguish keywords and labels? just reserved? capitalization? underscores?
+-- delimiters in the grammar & how to apply keyword functions
+
+-- eventually: multiple files / imports, that sounds terrible and I don't want to do it
+
+
+-- types at the lowest level:
+-- lists w. which constraint to apply
+
+
+
+
+
+-----------------------
+
+color: stream
+    light
+	        pink
+	        blue
+	        yellow
+    dark
+	        blue
+	        black
+
+shape: stream
+    triangle
+    circle
+    square
+
+-----------------------
+
+transitionStreams: transitionStreams
+	  transition: light/dark color
+		    [(color, light)  (color, light)] -- should I remove the []? then how do we handle line breaks if it's a *really* long list. Not crucial but it'd be nice to handle it
+		    [(color, light)  (color, dark)]
+		    [(color, dark)   (color, light)]
+		    [(color, dark)   (color, dark)]
+    transition: blue/pink
+        [(color, light, pink) (color, light, blue)]
+        [(color, light, pink) (color, light, pink)]
+        [(color, light, blue) (color, light, pink)]
+        [(color, light, blue) (color, light, blue)]
+    transition: shape
+        DROP (ALL shape) square -- same as "circle/triangle transitions"
+
+
+
+
+
+
+-----------------------
+
+// name with labels
+
+globalConstraints:
+    balanceTransitions:
+        light/dark color transition
+
+topBlockConstraints:
+    no more than 3 in a row, applied to allOf:
+        <light/dark color transition:   [(color, light) (color, light)]>
+        <light/dark color transition:   [(color, dark) (color, dark)]>],
+    at least 4 of every 8 should be, applied to AnyOf:
+    	  <color:    color, light, pink>
+    	  <color:    color, light, blue>]]  //--> compile from regex
+
+
+bottomBlockConstraints:
+    [[ ...]]
+
+initializationConstraints:
+    Avoid
+      <color:     color, light>
+
+terminationConstraints:
+    Avoid
+      <color:     color, dark>      # Careful using no! It might be contradictory, ie if you say "no shape" then that's an impossible experiment! You should only use no with *sub*streams
+
+
+-----------------------
+
+
+myBlock:
+  sequence
+    repeat 4
+      avoid (color lightColors) (fully-cross base-stream)
+    fully-cross base-stream   # this is sizeOf(fullycrossed) number of trials
+
+
+initialization:
+    initializationConstraints
+        repeat 2
+            base-stream
+
+termination:
+    terminationConstraints
+        repeat 2
+            base-stream   # this is just 2 trials
+
+
+
+
+// type of the trial
+// this defines the SHAPE of a trial, ie <color, _shape, transition>
+// the "design"
+// specify this because what if you want to run multiple experiments
+base-stream: (color) (shape) (transition: light/dark color)
+base-stream: ALL  // ie cross all root streams
+
+experiment:
+	apply globalConstraints
+	sequence
+    initialization
+		apply topBlockConstraints
+			randomize
+				repeat 2
+					base-stream
+		apply bottomBlockConstraints
+			randomize
+				myBlock
+    termination

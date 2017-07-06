@@ -1,62 +1,74 @@
-{-# LANGUAGE OverloadedStrings #-}
 module Parser
-( decodeHLIR, decodeFactorPaths, decodeRawConstraint
-  , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HLIR(..) )
-where
-
-import Control.Monad (mzero)
-import Data.Aeson
-import qualified Data.ByteString.Lazy as BL
-import Data.Text
+    ( play
+    ) where
 
 
-type FactorPath = [String] -- an instance of a factorpath
-type FactorPaths = [FactorPath] --can hold all factorpaths
+-- import Text.Parsec
+-- import Text.Parsec.String
+import Text.ParserCombinators.Parsec
+import ParserDS
 
-data FullyCross = FullyCross FactorPaths Int deriving (Show, Eq)
-instance FromJSON FullyCross where
-  parseJSON (Object v) =
-            FullyCross <$> v .: "applied_to"
-                       <*> v .: "repetitions"
-  parseJSON _ = mzero
 
--- resolving the ints...
-data RawConstraint =
-  NoMoreThanKInARow  FactorPaths Int |
-  AtLeastKInARow     FactorPaths Int |
-  NoMoreThanKOutOfJ  FactorPaths Int Int |
-  AtLeastKOutOfJ     FactorPaths Int Int |
-  BalanceTransitions FactorPaths deriving (Show, Eq)
+play :: String -> Either ParseError String
+play s = parse rootParser "parameter" s
+-- play s = parse pmain "parameter" s
 
-instance FromJSON RawConstraint where
-    parseJSON (Object x) =
-        do (String oc) <- x .: "constraint"
-           case oc of
-               "NoMoreThanKInARow"  -> NoMoreThanKInARow  <$> x .: "applied_to" <*> x .: "k"
-               "AtLeastKInARow"     -> AtLeastKInARow     <$> x .: "applied_to" <*> x .: "k"
-               "NoMoreThanKOutOfJ"  -> NoMoreThanKOutOfJ  <$> x .: "applied_to" <*> x .: "k" <*> x .: "j"
-               "AtLeastKOutOfJ"     -> AtLeastKOutOfJ     <$> x .: "applied_to" <*> x .: "k" <*> x .: "j"
-               "BalanceTransitions" -> BalanceTransitions <$> x .: "applied_to"
-               _                    -> mzero
+
+colon :: GenParser Char st Char
+colon  = char ':'
+
+-- word :: Parser String
+word :: GenParser Char st String
+word = many1 letter
+-- all-streams : streams
+-- <label> : <type>
+
+rootParser :: GenParser Char st String
+rootParser = word >> space >> colon >> space >> typeParser -- return "hi"
+
+typeParser :: GenParser Char st String
+typeParser = (try $ string "stream"            >> return "Estate")
+         <|> (try $ string "transition-stream" >> return "Duchy")
+         <|> (try $ string "constraints"       >> return "Duchy")
+         <|> (try $ string "block"             >> return "Duchy")
+         <|> (try $ string "base-stream"       >> return "Duchy")
+         <|> (try $ string "experiment"        >> return "Duchy")
 
 
 
-data HLIR = HLIR FactorPaths FullyCross [RawConstraint] deriving (Show, Eq)
-instance FromJSON HLIR where
-  parseJSON (Object v) =
-            HLIR <$> v .: "factorPaths"
-                  <*> v .: "fullyCross"
-                  <*> v .: "constraints"
-  parseJSON _ = mzero
+-- TODO: represent blocks (as scopes probably)
+-- They're a list with indicies to apply to and a list of constraints to apply
 
 
--- just some suga to make testing cleaner
 
-decodeHLIR :: BL.ByteString -> Maybe HLIR
-decodeHLIR = decode
+-- list of names that are in scope
 
-decodeFactorPaths :: BL.ByteString -> Maybe FactorPaths
-decodeFactorPaths = decode
+-- root parser
+-- everything we encounter at the root better be
+-- <label> : <type>
+-- label is a string, type is: stream, transition-stream, constraints, block, base-stream, experiment
 
-decodeRawConstraint :: BL.ByteString -> Maybe RawConstraint
-decodeRawConstraint = decode
+-- stream Parser
+-- label : stream
+-- builds a list of lists (flattened rememeber)
+-- everyline is <# whitespace>, <label>, <newline>
+
+-- base-stream Parser
+-- <label> : base-stream
+-- next line, indent then, "cross" then space sep'd list of *top level* labels we know from from streams
+
+-- constraint Parser
+-- <label> : constraints
+--     max-in-a-row 7 (allOf <stream>)  stream must be a name we know from before. Not sure how to handle root/ leaf always
+-- valid keywords: max-in-a-row, etc more later
+
+
+-- TODO: don't do this one for now
+-- experiment Parser
+-- <label> : experiment
+-- next is these blocks but let's ignore them for now...
+-- keywords: fully-cross, apply
+
+
+-- so:
+-- root parser gets type and calls the right parser after that on the next line

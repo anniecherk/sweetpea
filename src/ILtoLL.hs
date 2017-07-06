@@ -3,7 +3,7 @@ module ILtoLL
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
 where
 
-import Parser
+import ParserDS
 import HLtoIL
 import qualified Data.Map as M
 import Data.List (tails)
