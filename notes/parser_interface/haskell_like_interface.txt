@@ -1,0 +1,132 @@
+
+
+
+
+# Possible types:
+# Streams, Transitions, Constraints, Design, Blocks (and Strings)
+
+
+
+
+
+# how does fully crossing work with nested levels? (only cross color & shape? save lightColor handle for constraints)
+
+
+----------- Streams --------------
+
+lightColors = Stream 'light' ['pink', 'blue', 'yellow']   # Maybe call it a set
+darkColors  = Stream 'dark'  ['blue', 'black']
+color       = Stream 'color' [lightColors, darkColors]
+
+# could have also written it inline
+# color = Stream 'color' [(Stream 'light' ['pink', 'blue', 'yellow']), (Stream 'dark' ['blue', 'black'])]
+
+shape = Stream 'shape' ['triangle', 'circle', 'square']
+
+
+cross (color, shape) : pink, square
+<color, shape>
+cross (lightColors, shape) : pink, square
+<lightcolor, darkcolor, shape>
+
+--------- Transitions --------------
+
+# Can use stream pairs OR a list of string pairs
+
+# Transitions can span more than 2 consequitive
+
+
+light-dark-transitions = Transitions (lightColors, darkColors, lightColors)
+
+# comes up with all transitions between these streams (doesn't descend)
+#   ie, [(light, light), (light, dark), (dark, light), (dark, dark)]
+# could have also written
+#   Transitions (children color)
+# if we wanted *all* the color transitions, we could have written
+#   Transitions (leaves color)
+# if we wanted transitions from light blue to dark colors
+#   Transitions (lightColors ~ 'blue') (children darkColors)
+
+blue-pink-transitions = Transitions  [(lightColors ~ 'pink', lightColors ~ 'blue'),
+                                      (lightColors ~ 'blue', lightColors ~ 'pink')]
+
+shape-transitions = Transitions (subtract (cross shape shape) (shape ~ 'square'))
+
+
+# Stream operators:
+# ~ means follow path one level down (children)
+# leaves gets the leaves
+# children gets the children
+
+
+
+---------- Constraints -------------
+
+
+globalConstraints = Constraints (balanceTransitions light-dark-transitions)
+
+# two possible interpetations
+topBlockConstraints = Constraints [[max-in-a-row 3 levels | levels <- [blue-pink-transitions, shape-transitions]],    # "allOf"
+                                   count (4,8) [lightColors ~ 'pink', lightColors ~ 'blue']]                          # "anyOf"
+
+bottomBlockConstraints = Constraints (...)
+
+initializationConstraints = Constraints (avoid lightColors)    # avoid is count(0)
+
+terminationConstraints = Constraints (include darkColors)      # include is count(1,)
+
+noConstraints = []
+
+
+
+---------- Design ------------
+
+design = cross [color, shape]
+
+
+----------- Blocks ------------    # fully crossed constraints not good enough!!!
+# Block <what's in it?>  <what are the constraints>
+
+initBlock = Block (sample 2 design) initialConstraints                # sample (w.replacement) from all possible trials in the full crossing
+
+termBlock = Block (sample 2 design) terminalConstraints               # avoid / include can ONLY be used with sample
+
+myBlock = repeat 4 (Block (fully-crossed design) topBlockConstraints) noConstraints  # x-matrix
+
+otherBlock = exactly (lightColors ~ 'blue', shape ~ 'circle')
+
+middleBlock = mix [myBloc, otherBlock] someConstraints
+
+
+# this shuffles order of blocks
+bottomBlock = randomSequence [myBlock, otherBlock] blockBoundaryAndBeyondConstraints
+
+
+----------- notes ------
+# random w. out replacement, permute, random w/out replacement
+
+# block combinators:
+#  sequence combinators:
+#    sequence / randomWithReplacement / permutations
+#    repeat
+#  mix
+#  optional # at random add this block, or don't    # null blocks
+
+# block filler : what's in it?
+#  sample / fully cross
+
+# block builder :
+#  exactly
+
+
+# implicit randomization (use exactly + sequence if you don't want that)
+# what are all block ordering constraints? is random order the only one?
+
+-------- Experiment ---------
+
+# session contains experiments
+myGreatExperiment = experiment (sequence [initBlock, myBlock, termBlock] globalConstraints)
+
+
+
+# experiment is a function that takes a block
