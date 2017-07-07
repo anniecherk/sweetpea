@@ -1,4 +1,4 @@
-Keywords
+
 
 
 ----------- Streams --------------
@@ -12,11 +12,12 @@ data Transitions = Transitions [Streams] | Transitions [Paths]
 
 children :: Stream -> Transitions
 leaves   :: Stream -> Transitions
-~ infix  :: Stream -> String -> Stream(?)
+tilda    :: Stream -> String -> Stream -- or Path(?)
+--  ~ infix
 
-"Path" ?
+--"Path" ?
 
-subtract?
+-- subtract?
 
 cross :: Stream -> Stream -> Stream
 
@@ -25,75 +26,43 @@ cross :: Stream -> Stream -> Stream
 data Constraints = Constraint ParserConstraint | Constraints [ParserConstraint]
 
 -- Stream & Transition need to be in a type-class
-max-in-a-row :: Int -> Stream -> ParseConstraint
-count :: (Int, Int) ->
+maxInARow :: Int -> Stream -> ParserConstraint
+count :: (Count, Count) -> Stream -> ParserConstraint
+avoid :: Stream -> ParserConstraint
+include :: Stream -> ParserConstraint
 
-
-
-globalConstraints = Constraint (balanceTransitions light-dark-transitions)
-
-# two possible interpetations
-topBlockConstraints = Constraints [[max-in-a-row 3 levels | levels <- [blue-pink-transitions, shape-transitions]],    # "allOf"
-                                   count (4,8) [lightColors ~ 'pink', lightColors ~ 'blue']]                          # "anyOf"
-
-bottomBlockConstraints = Constraints (...)
-
-initializationConstraints = Constraints (avoid lightColors)    # avoid is count(0)
-
-terminationConstraints = Constraints (include darkColors)      # include is count(1,)
-
+noConstraints :: ParserConstraints
 noConstraints = []
+
+data Count = Count Int | Count None
 
 
 
 ---------- Design ------------
 
-design = cross [color, shape]
-
 
 ----------- Blocks ------------    # fully crossed constraints not good enough!!!
-# Block <what's in it?>  <what are the constraints>
 
-initBlock = Block (sample 2 design) initialConstraints                # sample (w.replacement) from all possible trials in the full crossing
+data Block = Block BlockContents Constraints
 
-termBlock = Block (sample 2 design) terminalConstraints               # avoid / include can ONLY be used with sample
+data BlockContents = BlockContents
 
-myBlock = repeat 4 (Block (fully-crossed design) topBlockConstraints) noConstraints  # x-matrix
-
-otherBlock = exactly (lightColors ~ 'blue', shape ~ 'circle')
-
-middleBlock = mix [myBloc, otherBlock] someConstraints
+sample :: Int -> Stream -> BlockContents
+fullyCross :: Stream -> BlockContents
+exactly :: Stream -> Block
 
 
-# this shuffles order of blocks
-bottomBlock = randomSequence [myBlock, otherBlock] blockBoundaryAndBeyondConstraints
 
 
------------ notes ------
-# random w. out replacement, permute, random w/out replacement
-
-# block combinators:
-#  sequence combinators:
-#    sequence / randomWithReplacement / permutations
-#    repeat
-#  mix
-#  optional # at random add this block, or don't    # null blocks
-
-# block filler : what's in it?
-#  sample / fully cross
-
-# block builder :
-#  exactly
+sequence :: [Blocks] -> Constraints -> Block
+randomWithReplacement :: [Blocks] -> Constraints ->  Block
+permutations :: [Blocks] -> Constraints ->  Block
+repeat :: Int -> Block -> Constraints -> Block
+mix :: [Blocks] -> Constraints ->  Block
 
 
-# implicit randomization (use exactly + sequence if you don't want that)
-# what are all block ordering constraints? is random order the only one?
 
 -------- Experiment ---------
 
-# session contains experiments
-myGreatExperiment = experiment (sequence [initBlock, myBlock, termBlock] globalConstraints)
-
-
-
-# experiment is a function that takes a block
+-- maybe this is is the "run" function? Not clear yet.
+experiment :: Block
