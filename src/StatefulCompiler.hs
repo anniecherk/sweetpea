@@ -12,6 +12,39 @@ type Var = Int
 type CNF = [[Var]]
 
 
+-- High Level Functions (Assert ==, <, >)
+
+
+toBinary :: Int -> [Int] -> [Int]
+toBinary input acc
+ | input == 0 = acc
+ | even input = toBinary (quot input 2) ((-1):acc)
+ | otherwise  = toBinary (quot input 2) (1:acc)
+
+
+-- asserts that the total multibit "sum" value out of popcount
+-- IS K (in binary), this requires left padding w. 0's for correct comparison
+-- (assertion made by adding those double implications to CNF accumulator)
+assertKofN :: Int -> [Var] -> State (Count, CNF) ()
+assertKofN k inList = do sumBits <- popCount inList
+                         let inBinary = toBinary k [] -- tricky! right-pad w. -1's, then reverse, take the right amount, reverse
+                         let leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
+                         let assertion = zipWith (*) leftPadded sumBits
+                         appendCNF $ map (:[]) assertion
+
+
+
+-- assertKofN k inList = map (:[]) assertion -- ++ accum
+--   where (accum, sumBits) = popCount inList
+--         inBinary = toBinary k []
+--         leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
+--         assertion = zipWith (*) leftPadded sumBits
+--         toBinary :: Int -> [Int] -> [Int]
+--         toBinary input acc
+--           | input == 0 = acc
+--           | even input = toBinary (quot input 2) ((-1):acc)
+--           | otherwise  = toBinary (quot input 2) (1:acc)
+
 
 -------------
 getFresh :: State (Count, CNF) Count
@@ -74,17 +107,16 @@ fullAdder a b cin = do cout <- getFresh
           --    a's      b's    cin          nVars  accum   c's    s's
 rippleCarry :: [Var] -> [Var] -> Var -> State (Count, CNF) ([Var], [Var])
 rippleCarry as bs cin = rippleCarryWorker (zip (reverse as) (reverse bs)) cin [] []
-
-                 --   [as, bs]       cin    cAccum   sAccum          nVars        cAccum sAccum
-rippleCarryWorker :: [(Var, Var)] -> Var -> [Var] -> [Var] -> State (Count, CNF) ([Var], [Var])
-rippleCarryWorker []   _   cAccum sAccum = return (cAccum, sAccum)
-rippleCarryWorker asbs cin cAccum sAccum =  do
-                             let a = fst $ head asbs
-                             let b = snd $ head asbs
-                             (c, s) <- fullAdder a b cin
-                             let newCs = cAccum ++ [c]
-                             let newSs = sAccum ++ [s]
-                             rippleCarryWorker (tail asbs) c newCs newSs
+                           --   [as, bs]       cin    cAccum   sAccum          nVars        cAccum sAccum
+    where rippleCarryWorker :: [(Var, Var)] -> Var -> [Var] -> [Var] -> State (Count, CNF) ([Var], [Var])
+          rippleCarryWorker []   _   cAccum sAccum = return (cAccum, sAccum)
+          rippleCarryWorker asbs cin cAccum sAccum =  do
+                                     let a = fst $ head asbs
+                                     let b = snd $ head asbs
+                                     (c, s) <- fullAdder a b cin
+                                     let newCs = cAccum ++ [c]
+                                     let newSs = sAccum ++ [s]
+                                     rippleCarryWorker (tail asbs) c newCs newSs
 
 
 -- -- See! notes/how_to_zeropad_on_popcount.txt for algorithm
@@ -118,8 +150,6 @@ popCountCompute (a:as) (b:bs) resultVars = do cin <- getFresh
                                               (cs, ss) <- rippleCarry a b cin
                                               let formattedResult = maximum cs : reverse ss
                                               popCountCompute as bs (formattedResult : resultVars)
-
-
 
 
 
