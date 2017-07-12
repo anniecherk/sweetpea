@@ -3,6 +3,7 @@ module StatefulCompiler
 where
 
 import Control.Monad.Trans.State
+import Control.Monad (replicateM)
 import System.Random
 
 -- AND of ORs
@@ -85,6 +86,38 @@ rippleCarryWorker asbs cin cAccum sAccum =  do
                              let newSs = sAccum ++ [s]
                              rippleCarryWorker (tail asbs) c newCs newSs
 
+
+-- -- See! notes/how_to_zeropad_on_popcount.txt for algorithm
+-- returns the list that represents the bits of the "sum" variable in binary
+popCount :: [Var] -> State (Count, CNF) [Var]
+popCount [] = error "Why did you call popcount with an empty list?"
+popCount inList = do let nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
+                     auxList <- replicateM (2^nearestLargestPow - length inList) getFresh -- grab that many fresh vars
+                     appendCNF $ map (\x -> [-x]) auxList -- make sure we add all the fake 0'd out aux vars to the cnf...
+                     popCountLayer $ map (: []) (inList ++ auxList)
+
+
+-- performs a "layer" of popcount (see example in notes/how_to_zeropad_on_popcount.txt)
+popCountLayer :: [[Var]] -> State (Count, CNF) [Int]
+popCountLayer [] = error "Why did you call popcountlayer with an empty list?"
+popCountLayer [x] = return x
+popCountLayer bitList = do let halfWay = quot (length bitList) 2
+                           let firstHalf = take halfWay bitList
+                           let secondHalf = drop halfWay bitList
+                           varList <- popCountCompute firstHalf secondHalf []
+                           popCountLayer varList
+
+
+-- -- EXPECTS TWO LISTS OF THE SAME LENGTH!
+-- takes in the two "numbers" in binary to add together
+-- returns lists of the output variables
+popCountCompute :: [[Var]] -> [[Var]] -> [[Var]]-> State (Count, CNF) [[Var]]
+popCountCompute [] [] accum = return accum
+popCountCompute (a:as) (b:bs) resultVars = do cin <- getFresh
+                                              appendCNF [[-cin]] -- this asserts that cin is 0
+                                              (cs, ss) <- rippleCarry a b cin
+                                              let formattedResult = maximum cs : reverse ss
+                                              popCountCompute as bs (formattedResult : resultVars)
 
 
 
