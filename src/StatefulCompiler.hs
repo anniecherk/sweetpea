@@ -14,7 +14,9 @@ type CNF = [[Var]]
 
 -- High Level Functions (Assert ==, <, >)
 
-
+-- return the number "in binary" where True is 1 and False is -1
+-- ie, 2 => [1, -1]
+-- 8 => [1, -1, -1, -1]
 toBinary :: Int -> [Int] -> [Int]
 toBinary input acc
  | input == 0 = acc
@@ -34,16 +36,75 @@ assertKofN k inList = do sumBits <- popCount inList
 
 
 
--- assertKofN k inList = map (:[]) assertion -- ++ accum
---   where (accum, sumBits) = popCount inList
---         inBinary = toBinary k []
---         leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
---         assertion = zipWith (*) leftPadded sumBits
---         toBinary :: Int -> [Int] -> [Int]
---         toBinary input acc
---           | input == 0 = acc
---           | even input = toBinary (quot input 2) ((-1):acc)
---           | otherwise  = toBinary (quot input 2) (1:acc)
+ -- -- k < n  === k + (-n) < 0
+ -- -- k is the desiredCount
+ -- -- n is the output of popcount of the inList
+
+subtract' :: [Int] -> [Int] -> State (Count, CNF) ()
+subtract' k n = error "too busy for subtraction"
+
+ -- subtract' :: [Int] -> [Int] -> Int -> CNF
+ -- subtract' k n nVars = subtractionCnf ++ assertion
+ --   where (nCnf, twosCompN) = toNegTwosComp n nVars
+ --         newNVars = maximum twosCompN -- we're not going to talk about how kludgy this is
+ --         -- zero pad twosCompK until it's the same size as twosCompN
+ --         zeroPadding = [(newNVars+1)..(length twosCompN - length k + newNVars)]
+ --         twosCompK = zeroPadding ++ k --prepend zeropadding
+ --         kCnf = map (\x -> [-x]) zeroPadding --"and" the new vars in their negative form
+ --
+ --         rcCin = 1 + maximum zeroPadding
+ --         rcCNF = [[-rcCin]]
+ --
+ --         finalNumberNVars = rcCin + 1 --this is the max after everything else is done, in need of refactor
+ --         -- add them with a ripple carry
+ --         -- accum c's s's                 a's      b's    cin     nVars            accum
+ --         (subtractionCnf, cs, ss) = rippleCarry twosCompN twosCompK rcCin finalNumberNVars (nCnf ++ kCnf ++ rcCNF)
+ --         -- assert that the top bit (the top carry out) is a 1 (meaning the number is negative in 2's comp)
+ --         assertion = [[-1 * maximum cs]]
+ --
+ --
+
+
+ -- https://courses.cs.vt.edu/csonline/NumberSystems/Lessons/SubtractionWithTwosComplement/index.html
+ -- prepend a "1" to make it negative, flip the bits, & add one
+ -- inList is the a list of the bits of the number in binary to take the 2's comp form of
+ -- "ss" is the final neg 2's comp variable
+toNegTwosComp :: [Int] -> State (Count, CNF) [Int]
+toNegTwosComp inList = do  ----- NEGATE & FLIP THE BITS --------
+      -- get new vars, 1 more than inList so we can set the top bit
+      flippedBitsVars <- replicateM (1 + length inList) getFresh
+      appendCNF [[head flippedBitsVars]] -- sets top bit to "one" to negate
+      -- flip the bits, ie assert freshVar_i iff ~inputVar_i
+      appendCNF $ concat $ zipWith doubleImplies (tail flippedBitsVars) (map (\x -> -x) inList)
+      ------- GET THE "ONE" TO ADD ----------------
+      -- make a zero padded one (for the addition) of the right dimensions
+      oneVars <- replicateM (1 + length inList) getFresh
+      -- set all the top bits to 0, the bottom bit to 1, ie 0001
+      appendCNF $ map (\x -> [-x]) (init oneVars) ++ [[last oneVars]]
+      ------- ADD EM ------------------------------
+      (_, ss) <- rippleCarry flippedBitsVars oneVars
+      return ss
+
+
+
+
+ -- toNegTwosComp :: [Int] -> Int -> (CNF, [Int])
+ -- toNegTwosComp input nVars = (cnf, ss)
+ --   -- one more var than before so we can set the high bit
+ --   where flippedBitsVars = [(nVars+1).. (length input + nVars + 1)]
+ --         -- "prepend a 1" by "anding" it on the the CNF
+ --         leadingOneCNF = [[head flippedBitsVars]]
+ --         -- flip the bits, ie assert freshVar_i iff ~inputVar_i
+ --         flippedBitsCNF = concat $ zipWith doubleImplies (tail flippedBitsVars) input
+ --         -- make a zero padded one
+ --         oneVars = [(length input + nVars + 2).. ((2*length input) + nVars + 2)] --TODO: aaaand it's time for the state monad
+ --         cin = 1 + maximum oneVars
+ --       -- accum c's s's                     a's      b's    cin nVars       accum
+ --         (cnf, _, ss) = rippleCarry flippedBitsVars oneVars cin cin (leadingOneCNF ++ flippedBitsCNF ++ [[-cin]])
+
+
+
+
 
 
 -------------
@@ -104,9 +165,11 @@ fullAdder a b cin = do cout <- getFresh
 -- http://www.dsm.fordham.edu/~moniot/Classes/CompOrganization/binary-adder/node7.html
 -- Ripple Carry! Wooh!
 -- Just a recursive function to tie the c's together correctly
-          --    a's      b's    cin          nVars  accum   c's    s's
-rippleCarry :: [Var] -> [Var] -> Var -> State (Count, CNF) ([Var], [Var])
-rippleCarry as bs cin = rippleCarryWorker (zip (reverse as) (reverse bs)) cin [] []
+          --    a's      b's           nVars  accum   c's    s's
+rippleCarry :: [Var] -> [Var] -> State (Count, CNF) ([Var], [Var])
+rippleCarry as bs = do cin <- getFresh
+                       appendCNF [[-cin]]
+                       rippleCarryWorker (zip (reverse as) (reverse bs)) cin [] []
                            --   [as, bs]       cin    cAccum   sAccum          nVars        cAccum sAccum
     where rippleCarryWorker :: [(Var, Var)] -> Var -> [Var] -> [Var] -> State (Count, CNF) ([Var], [Var])
           rippleCarryWorker []   _   cAccum sAccum = return (cAccum, sAccum)
@@ -145,9 +208,7 @@ popCountLayer bitList = do let halfWay = quot (length bitList) 2
 -- returns lists of the output variables
 popCountCompute :: [[Var]] -> [[Var]] -> [[Var]]-> State (Count, CNF) [[Var]]
 popCountCompute [] [] accum = return accum
-popCountCompute (a:as) (b:bs) resultVars = do cin <- getFresh
-                                              appendCNF [[-cin]] -- this asserts that cin is 0
-                                              (cs, ss) <- rippleCarry a b cin
+popCountCompute (a:as) (b:bs) resultVars = do (cs, ss) <- rippleCarry a b
                                               let formattedResult = maximum cs : reverse ss
                                               popCountCompute as bs (formattedResult : resultVars)
 
@@ -160,6 +221,11 @@ popCountCompute (a:as) (b:bs) resultVars = do cin <- getFresh
 -- (a or ~b) and (~a or b)
 doubleImplies :: Int -> Int -> CNF
 doubleImplies a b = [[a, -b], [-a, b]]
+
+-- a <=> (b and c)  = (-a v b) ^ (-a v c) ^ (a v -b v -c)
+-- Thanks wolfram alpha :heart: (see note: wolfram_doubleimplies.txt)
+aDoubleImpliesBandC :: Int -> Int -> Int -> CNF
+aDoubleImpliesBandC a b c = [[-a, b], [-a, c], [a, -b, -c]]
 
 -- wraps in an extra layer: this is just for readabilty
 andCNF :: [Int] -> CNF
