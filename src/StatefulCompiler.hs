@@ -37,6 +37,15 @@ setToZero x = appendCNF [[-x]]
 ------------------------------------------------------------------
 ---------- High Level Functions (Assert ==, <, >) ----------------
 
+-- return the number "in binary" where True is 1 and False is -1
+-- ie, 2 => [1, -1]
+-- 8 => [1, -1, -1, -1]
+toBinary :: Int -> [Int] -> [Int]
+toBinary input acc
+  | input == 0 = acc
+  | even input = toBinary (quot input 2) ((-1):acc)
+  | otherwise  = toBinary (quot input 2) (1:acc)
+
 
 
 -- asserts that the total multibit "sum" value out of popcount
@@ -49,44 +58,22 @@ assertKofN k inList = do sumBits <- popCount inList
                          let assertion = zipWith (*) leftPadded sumBits
                          appendCNF $ map (:[]) assertion
 
--- return the number "in binary" where True is 1 and False is -1
--- ie, 2 => [1, -1]
--- 8 => [1, -1, -1, -1]
-toBinary :: Int -> [Int] -> [Int]
-toBinary input acc
-  | input == 0 = acc
-  | even input = toBinary (quot input 2) ((-1):acc)
-  | otherwise  = toBinary (quot input 2) (1:acc)
-
-
-allocateBinary :: Int -> [Var] -> State (Count, CNF) [Var]
-allocateBinary input acc
-  | input == 0 = return acc
-  | otherwise = do
-      newVar <- getFresh
-      if even input
-      then allocateBinary (quot input 2) ((-1*newVar):acc)
-      else allocateBinary (quot input 2) (newVar:acc)
-
-
--- lessthanK
-
-
-
 
 kLessThanN :: Int -> [Var] -> State (Count, CNF) ()
-kLessThanN desiredCount inList = do
-    popCountSum <- popCount inList
-    k <- allocateBinary desiredCount []
-    subtract' k popCountSum
+kLessThanN = inequality True
 
 kGreaterThanN :: Int -> [Var] -> State (Count, CNF) ()
-kGreaterThanN desiredCount inList = do
+kGreaterThanN = inequality False
+
+-- TODO: use LL parser DS here instead of String
+inequality :: Bool -> Int -> [Var] -> State (Count, CNF) ()
+inequality isLessThan kInt inList = do
     popCountSum <- popCount inList
-    k <- allocateBinary desiredCount []
-    subtract' popCountSum k
-
-
+    kVars <- replicateM kInt getFresh
+    appendCNF $ map (:[]) $ zipWith (*) kVars $ toBinary kInt []
+    if isLessThan
+    then subtract' kVars popCountSum
+    else subtract' popCountSum kVars
 
  -- -- k < n  === k + (-n) < 0
  -- -- k is the desiredCount
