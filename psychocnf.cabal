@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Compiler, Testers, Parser, ParserDS, HLtoIL, ILtoLL
+  exposed-modules:     Testers, Parser, ParserDS, HLtoIL, ILtoLL
                      , StatefulCompiler
                      , Specifier, CodeGen, Validator
   build-depends:       base >= 4.7 && < 5
