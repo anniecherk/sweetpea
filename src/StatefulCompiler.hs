@@ -28,7 +28,7 @@ toBinary input acc
 -- IS K (in binary), this requires left padding w. 0's for correct comparison
 -- (assertion made by adding those double implications to CNF accumulator)
 assertKofN :: Int -> [Var] -> State (Count, CNF) ()
-assertKofN k inList = do sumBits <- popCount inList
+assertKofN k inList = do sumBits <- popCount inList 
                          let inBinary = toBinary k [] -- tricky! right-pad w. -1's, then reverse, take the right amount, reverse
                          let leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
                          let assertion = zipWith (*) leftPadded sumBits
