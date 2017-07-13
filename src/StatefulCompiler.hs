@@ -14,6 +14,9 @@ type CNF = [[Var]]
 ------------------------------------------------------------------
 ---------- Helpful State Abstractions ----------------------------
 
+initState :: (Count, CNF)
+initState = (1, [])
+
 getFresh :: State (Count, CNF) Count
 getFresh =  do (numVars, x) <- get
                put (numVars + 1, x)
