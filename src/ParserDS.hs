@@ -1,5 +1,5 @@
 module ParserDS
-()
+-- ()
 where
 
 
@@ -14,24 +14,35 @@ where
 -- TODO: maybe think about using overloaded strings
 data Label = RLabel String [Label] | Label String [String]
 
-data Constraints = NoConstraints | FullyCross [[String]] | CountConstraints Int -- TODO
+data Constraints = NoConstraints | FullyCross [Label] | CountConstraints Int -- TODO
 
 -- a block is how many trials & the constraints applied to them
--- TODO: sub-blocks
 data Block = Block Int [Constraints] | RBlock Block [Constraints]
 
 -- TODO: clearly. Do I want this here for syntax? idk
-cross :: [[a]] -> [[a]]
+cross :: [Label] -> [Label]
 cross = id
 
 -- thanks SO: https://stackoverflow.com/questions/4119730/cartesian-product-of-2-lists-in-haskell
-fullycross :: [[String]] -> Block
-fullycross labels = Block (length $ sequence labels) [FullyCross labels]
+fullycross :: [Label] -> Block         --TODO
+fullycross labels = error "idk"
+  -- Block (length $ sequence "labels") [FullyCross labels]
+
+experiment :: Block -> IO ()
+experiment notImplemented = error "wtf how does this work"
+
+
+
+-- process filename
+-- ->
+-- parse filename -> desugar to ll -> set up state & process in order -> codegen
 
 
 
 
--- experiment $ RBlock (fully-cross design) theConstraints)
+
+
+-- experiment $ RBlock (fully-cross design) theConstraints
 --        where
 --         color  = Stream "color" ["red", "blue"]
 --         shape  = Stream "shape" ["circle", "square"]

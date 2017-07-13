@@ -17,20 +17,20 @@ import ParserDS
 
 -------- Experiment ---------
 main :: IO ()
-main = experiment (Block (fully-crossed design) theConstraints)
+main = experiment $ RBlock (fullycross design) [noConstraints]
        where
          ----------- Streams --------------
-        color  = Stream "color" ["red", "blue"]
-        shape  = Stream "shape" ["circle", "square"]
+        color  = Label "color" ["red", "blue"]
+        shape  = Label "shape" ["circle", "square"]
 
         --------- Transitions --------------
 
         ---------- Constraints -------------
 
-        theConstraints = Constraints (count (None, 3) color)     -- this count syntax doesn't fly
+      --  theConstraints = Constraints (count (None, 3) color)     -- this count syntax doesn't fly
 
         -- syntax/constructor for "no constraints"
-        noConstraints = []
+        noConstraints = NoConstraints
 
         ---------- Design ------------
 
