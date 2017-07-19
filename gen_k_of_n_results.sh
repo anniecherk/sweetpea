@@ -4,19 +4,25 @@ NC='\033[0m' # No Color
 GREEN='\033[0;32m'
 PURPLE='\033[0;35m'
 
+# get built
+stack build
+
 if [ $# -eq 1 ];
 then
     base=$1
+    #regenerate the tests!!
+    stack exec cnf generateKlessthanN $base
+    # stack exec cnf generateKofN $base
 else
     base=""
+    #regenerate the tests!!
+    # stack exec cnf generateKofN 4
+    stack exec cnf generateKlessthanN 4
 fi
 
-#regenerate the tests!!
-stack build
-#stack exec cnf generateKofN 6
-stack exec cnf generateKlessthanN 6
 
-#for file in KofNTests/$base*.cnf;
+
+# for file in KofNTests/$base*.cnf;
 for file in KlessthanNTests/$base*.cnf;
 do
     if [ ! -e $file ]; then
@@ -33,7 +39,7 @@ do
 
 done
 
-#stack exec cnf testKofN
+# stack exec cnf testKofN
 stack exec cnf testKlessthanN
 
 echo -e "${GREEN}Done generating results!${NC}"

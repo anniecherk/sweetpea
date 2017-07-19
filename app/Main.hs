@@ -22,6 +22,37 @@ doTestPopCount file = do
   let nSetVars = read (head $ splitOn "_" shortFilePath) ::Int
   return $ validate $ testResultPopCount result nSetVars
 
+--------
+
+-- this is either (==) or (<)
+doTestKandN :: (Int -> Int -> Bool) -> String -> IO String
+doTestKandN eqOrLessThan file = do
+  result <- readFile file
+  let nSetVars = read (splitOneOf "_./" file !! 1) ::Int --- lord have mercy lord have mercy lord have mercy
+  let k        = read (splitOneOf "_./" file !! 3) ::Int -- this makes assumptions about how the generateKofN formats file names...
+  return $ validate $  testResultKandN result k nSetVars eqOrLessThan
+
+
+processNandKTesting :: [String] -> (Int -> Int -> Bool) -> String -> IO ()
+processNandKTesting args eqOrLessThan dirName = do
+  fileList <- getDirectoryContents dirName
+  results <- mapM (doTestKandN eqOrLessThan . (dirName ++)) $ drop 2 fileList
+  if length args == 2 && (args !! 1) == "v"
+  then mapM_ putStrLn results
+  else mapM_ putStrLn $ filter (/="Correct!") results
+  putStrLn "Done testing"
+
+processNandKGeneration :: [String] -> (Int -> [String]) -> String -> IO ()
+processNandKGeneration args whichGenerator dirName = do
+  let n = if length args == 2
+          then read (head (tail args)) :: Int
+          else 2                                                                        -- zipping index for file names
+          -- TODO: refactor to zipWithM_
+  mapM_ (\(i, x) -> writeFile (dirName ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ whichGenerator n
+  putStrLn "Done generating tests"
+
+
+
 
 
 validate :: SATResult -> String
@@ -55,6 +86,23 @@ splitOnArgs args
       then mapM_ putStrLn results
       else mapM_ putStrLn $ filter (/="Correct!") results
       putStrLn "Done testing"
+
+------------------------------------------------------------------------------------------------------------------------
+-- mean to be run with the gen_popcount_results.sh script: it generates files, runs them, reads them back in to be validated
+-- example useage: gen_popcount_results.sh 6
+-- 6 specifies the length of the sequence we're exhausitvely validating
+-- defaults to 2
+-- popcount is tested by setting the inputs, and validating what they add to!
+  | head args == "generateKofN" = processNandKGeneration args assertAllKofNDIMACS "KofNTests/"
+
+  | head args == "generateKlessthanN" = processNandKGeneration args popCountAllKlessthanNDIMACS "KlessthanNTests/"
+
+-----
+  | head args == "testKofN" = processNandKTesting args (==) "KofNResults/"
+-----
+  | head args == "testKlessthanN" = processNandKTesting args (<) "KlessthanNResults/"
+
+
 
 
 
