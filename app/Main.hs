@@ -24,6 +24,9 @@ doTestPopCount file = do
 
 --------
 
+printErrors :: [(String, FilePath)] -> [String]
+printErrors = map (\(x, y) -> show y ++ " had error: " ++ x)
+
 -- this is either (==) or (<)
 doTestKandN :: (Int -> Int -> Bool) -> String -> IO String
 doTestKandN eqOrLessThan file = do
@@ -39,8 +42,8 @@ processNandKTesting args eqOrLessThan dirName = do
   results <- mapM (doTestKandN eqOrLessThan . (dirName ++)) $ drop 2 fileList
   if length args == 2 && (args !! 1) == "v"
   then mapM_ putStrLn results
-  else mapM_ putStrLn $ filter (/="Correct!") results
-  putStrLn "Done testing"
+  else mapM_ putStrLn $ printErrors $ filter ((/="Correct!") . fst) $ zip results $ drop 2 fileList
+
 
 processNandKGeneration :: [String] -> (Int -> [String]) -> String -> IO ()
 processNandKGeneration args whichGenerator dirName = do
@@ -89,7 +92,7 @@ splitOnArgs args
 
 ------------------------------------------------------------------------------------------------------------------------
 -- mean to be run with the gen_popcount_results.sh script: it generates files, runs them, reads them back in to be validated
--- example useage: gen_popcount_results.sh 6
+-- example useage: gen_k_of_n_results.sh 6
 -- 6 specifies the length of the sequence we're exhausitvely validating
 -- defaults to 2
 -- popcount is tested by setting the inputs, and validating what they add to!

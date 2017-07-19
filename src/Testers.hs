@@ -210,5 +210,5 @@ testResultKandN result k nSetVars eqOrLessThan
 kAndNCorrectHuh :: [Int] -> Int -> Int -> (Int -> Int -> Bool) -> SATResult
 kAndNCorrectHuh inList k nSetVars eqOrLessThan
   | eqOrLessThan nSetBits k = Correct
-  | otherwise = WrongResult nSetBits k
+  | otherwise = WrongResult k nSetBits
   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take nSetVars inList
