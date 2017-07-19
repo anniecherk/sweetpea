@@ -17,7 +17,7 @@ library
   hs-source-dirs:      src
   exposed-modules:     Parser, ParserDS, HLtoIL, ILtoLL
                      , StatefulCompiler, DataStructures
-                     , Specifier, CodeGen, Validator
+                     , Specifier, CodeGen, Validator, Testers
   build-depends:       base >= 4.7 && < 5
                      , tuple
                      , aeson

@@ -1,5 +1,8 @@
 module StatefulCompiler
-( initState
+( emptyState, initState
+-- debugging vv
+, getFresh
+-- debugging ^^
 , assertKofN, kLessThanN, kGreaterThanN
 , halfAdder, fullAdder, rippleCarry, popCount
 , andCNF )
@@ -20,8 +23,12 @@ import DataStructures
 ------------------------------------------------------------------
 ---------- Helpful State Abstractions ----------------------------
 
-initState :: (Count, CNF)
-initState = (1, [])
+emptyState :: (Count, CNF)
+emptyState = (1, [])
+
+-- if we need to start with variables 1-maxVar
+initState :: Int -> (Count, CNF)
+initState maxVar = (maxVar, [])
 
 getFresh :: State (Count, CNF) Count
 getFresh =  do (numVars, x) <- get

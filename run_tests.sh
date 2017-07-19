@@ -4,17 +4,26 @@ NC='\033[0m' # No Color
 GREEN='\033[0;32m'
 PURPLE='\033[0;35m'
 
+# Fresh build!
+stack build
+
 if [ $# -eq 1 ];
 then
     base=$1
+    # regenerate the test!!
+    stack exec cnf $base
 else
     base=""
+    # just run a bunch of things
+    stack exec cnf halfAdder
+    stack exec cnf fullAdder
+    stack exec cnf rippleCarry 3
 fi
 
-#regenerate the tests!!
-stack build
-stack exec cnf fullAdder
-stack exec cnf rippleCarry 3
+
+# stack exec cnf $base # halfAdder
+# # stack exec cnf fullAdder
+# # stack exec cnf rippleCarry 3
 
 for file in generated_tests/$base*.cnf;
 do
