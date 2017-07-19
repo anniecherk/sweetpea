@@ -29,7 +29,7 @@ for file in generated_tests/$base*.cnf;
 do
     if [ ! -e $file ]; then
         echo "No test found matching generated_tests/$base*.cnf"
-        exit 1†s
+        exit 1
     fi
 
     file=${file%.*}
