@@ -15,8 +15,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     Testers, Parser, ParserDS, HLtoIL, ILtoLL
-                     , StatefulCompiler
+  exposed-modules:     Parser, ParserDS, HLtoIL, ILtoLL
+                     , StatefulCompiler, DataStructures
                      , Specifier, CodeGen, Validator
   build-depends:       base >= 4.7 && < 5
                      , tuple
@@ -40,15 +40,6 @@ executable cnf
                      , split
   default-language:    Haskell2010
 
-executable minimal
-  hs-source-dirs:      app
-  main-is:             MinimalExample.hs
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
-  build-depends:       base
-                     , psychocnf
-                     , directory
-                     , split
-  default-language:    Haskell2010
 
 test-suite unitTests
   type:                exitcode-stdio-1.0

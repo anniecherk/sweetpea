@@ -1,15 +1,21 @@
 module StatefulCompiler
-(CNF )
+( initState
+, assertKofN, kLessThanN, kGreaterThanN
+, halfAdder, fullAdder, rippleCarry, popCount
+, andCNF )
 where
 
 import Control.Monad.Trans.State
 import Control.Monad (replicateM)
 import System.Random
 
--- AND of ORs
-type Count = Int
-type Var = Int
-type CNF = [[Var]]
+import DataStructures
+
+-- these are defined in DataStructures.hs, just here for reference
+-- -- AND of ORs
+-- type Count = Int
+-- type Var = Int
+-- type CNF = [[Var]]
 
 ------------------------------------------------------------------
 ---------- Helpful State Abstractions ----------------------------
@@ -60,7 +66,6 @@ assertKofN k inList = do sumBits <- popCount inList
                          let leftPadded = reverse $ take (length sumBits) (reverse inBinary ++ repeat (-1))
                          let assertion = zipWith (*) leftPadded sumBits
                          appendCNF $ map (:[]) assertion
-
 
 kLessThanN :: Int -> [Var] -> State (Count, CNF) ()
 kLessThanN = inequality True
@@ -120,7 +125,6 @@ toNegTwosComp inList = do  ----- NEGATE & FLIP THE BITS --------
 
 ------------------------------------------------------------------
 ---------- Adders ----------------------------
-
 halfAdder :: Var -> Var -> State (Count, CNF) (Var, Var)
 halfAdder a b = do c <- getFresh
                    s <- getFresh

@@ -2,7 +2,7 @@ module CodeGen
 (showDIMACS, showCNF)
 where
 
-import Compiler
+import DataStructures
 
 hello :: String
 hello = "hey there!"
