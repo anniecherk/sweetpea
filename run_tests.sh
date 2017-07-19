@@ -11,19 +11,15 @@ if [ $# -eq 1 ];
 then
     base=$1
     # regenerate the test!!
-    stack exec cnf $base
+    stack exec system-test $base
 else
     base=""
     # just run a bunch of things
-    stack exec cnf halfAdder
-    stack exec cnf fullAdder
-    stack exec cnf rippleCarry 3
+    stack exec system-test halfAdder
+    stack exec system-test fullAdder
+    # stack exec system-test rippleCarry 3
 fi
 
-
-# stack exec cnf $base # halfAdder
-# # stack exec cnf fullAdder
-# # stack exec cnf rippleCarry 3
 
 for file in generated_tests/$base*.cnf;
 do

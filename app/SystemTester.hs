@@ -45,13 +45,15 @@ processNandKTesting args eqOrLessThan dirName = do
   else mapM_ putStrLn $ printErrors $ filter ((/="Correct!") . fst) $ zip results $ drop 2 fileList
 
 
+-- processNandKGeneration args popCountAllKlessthanNDIMACS "KlessthanNTests/"
+
 processNandKGeneration :: [String] -> (Int -> [String]) -> String -> IO ()
 processNandKGeneration args whichGenerator dirName = do
   let n = if length args == 2
           then read (head (tail args)) :: Int
           else 2                                                                        -- zipping index for file names
-          -- TODO: refactor to zipWithM_
-  mapM_ (\(i, x) -> writeFile (dirName ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [0..] $ whichGenerator n
+          -- TODO: refactor to zipWithM_ BUG: should be zipping with 0 if == & with 1 if < (bc can't have < 0 true)
+  mapM_ (\(i, x) -> writeFile (dirName ++ show n ++ "_of_" ++ show i ++ ".cnf") x) $ zip [1..] $ whichGenerator n
   putStrLn "Done generating tests"
 
 
@@ -116,32 +118,26 @@ splitOnArgs args
   | head args == "halfAdder"
   = mapM_ (\(i, x) -> writeFile ("generated_tests/halfAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testHalfAdderDIMACS
 
-  ------------------------------------------------------------------------------------------------------------------------
-  -- meant to be run from the run_tests.sh script: it generates all the files, and then diffs them against the SAT result
-  -- useage: ./run_tests.sh fullAdder
-    | head args == "fullAdder" --tests ALL inputs to the full adder
-    = do                                                                    -- zipping index for file names
-      mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testFullAdderDIMACS
-      mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".sol") x) $ zip [0..] solnFullAdder
+------------------------------------------------------------------------------------------------------------------------
+-- meant to be run from the run_tests.sh script: it generates all the files, and then diffs them against the SAT result
+-- useage: ./run_tests.sh fullAdder
+  | head args == "fullAdder" --tests ALL inputs to the full adder
+  = do                                                                    -- zipping index for file names
+    mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".cnf") x) $ zip [0..] testFullAdderDIMACS
+    mapM_ (\(i, x) -> writeFile ("generated_tests/fullAdder_" ++ show i ++ ".sol") x) $ zip [0..] solnFullAdder
 
-  ------------------------------------------------------------------------------------------------------------------------
-  -- meant to be run from the run_tests.sh script: it generates all the files, and then diffs them against the SAT result
-  -- useage: ./rippleCarry.sh --ripplecarry 6 // where 6 specifies the length of the sequenece we're exhaustively testing
-  -- defaults to size 2.. not sure if this is the best design but...
-    -- | head args == "rippleCarry" --tests ALL inputs to the full adder
-    -- = do
-    --   let rippleSize = if length args == 2
-    --                    then read (head (tail args)) :: Int
-    --                    else 2                                                                     -- zipping index for file names
-    --   mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ testRippleCarryDIMACS rippleSize
-    --   mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".sol") x) $ zip [0..] $ solnRippleCarry rippleSize
+------------------------------------------------------------------------------------------------------------------------
+-- meant to be run from the run_tests.sh script: it generates all the files, and then diffs them against the SAT result
+-- useage: ./rippleCarry.sh --ripplecarry 6 // where 6 specifies the length of the sequenece we're exhaustively testing
+-- defaults to size 2.. not sure if this is the best design but...
+  -- | head args == "rippleCarry" --tests ALL inputs to the full adder
+  -- = do
+  --   let rippleSize = if length args == 2
+  --                    then read (head (tail args)) :: Int
+  --                    else 2                                                                     -- zipping index for file names
+  --   mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".cnf") x) $ zip [0..] $ testRippleCarryDIMACS rippleSize
+  --   mapM_ (\(i, x) -> writeFile ("generated_tests/rippleAdder" ++ show rippleSize ++ "_" ++ show i ++ ".sol") x) $ zip [0..] $ solnRippleCarry rippleSize
 
-
-  ------------------------------------------------------------------------------------------------------------------------
-    | otherwise = putStrLn $ "I don't know what you want from me! \n You said: " ++
-    show args ++ "\nTry one of these cmdln args:\n\
-    \generatePopCount [2], testPopCount [v], \n\
-    \generateKofN [2], testKofN [v], \nhalfAdder, fullAdder, rippleCarry [2] \n"
 
 
 --------------------------------------------------------------------------------

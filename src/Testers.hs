@@ -120,7 +120,7 @@ popCountKlessthanDIMACS numDigs k = showDIMACS cnf finalNVars
 
 -- and this is exhaustive, less tahn
 -- asserts every k from 0 to n
-popCountAllKlessthanNDIMACS :: Int -> [String]
+popCountAllKlessthanNDIMACS :: Int -> [String] -- NOTE: this doesn't check that fewer than 0 are true (duh)
 popCountAllKlessthanNDIMACS numDigs = map (popCountKlessthanDIMACS numDigs) [1.. numDigs]
 --
 --

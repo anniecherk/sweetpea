@@ -11,11 +11,11 @@ if [ $# -eq 1 ];
 then
     base=$1
     #regenerate the tests!!
-    stack exec cnf generatePopCount $base
+    stack exec system-test generatePopCount $base
 else
     base=""
     #regenerate the tests!!
-    stack exec cnf generatePopCount 4
+    stack exec system-test generatePopCount 4
 fi
 
 
@@ -34,6 +34,6 @@ do
 
 done
 
-stack exec cnf testPopCount
+stack exec system-test testPopCount
 
 echo -e "${GREEN}Done generating results!${NC}"

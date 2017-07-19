@@ -11,13 +11,13 @@ if [ $# -eq 1 ];
 then
     base=$1
     #regenerate the tests!!
-    stack exec cnf generateKlessthanN $base
-    # stack exec cnf generateKofN $base
+    stack exec system-test generateKlessthanN $base
+    # stack exec system-test generateKofN $base
 else
     base=""
     #regenerate the tests!!
-    # stack exec cnf generateKofN 4
-    stack exec cnf generateKlessthanN 4
+    # stack exec system-test generateKofN 4
+    stack exec system-test generateKlessthanN 4
 fi
 
 
@@ -39,7 +39,7 @@ do
 
 done
 
-# stack exec cnf testKofN
-stack exec cnf testKlessthanN
+# stack exec system-test testKofN
+stack exec system-test testKlessthanN
 
 echo -e "${GREEN}Done generating results!${NC}"
