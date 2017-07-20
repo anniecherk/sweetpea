@@ -1,17 +1,39 @@
 module HLtoIL
+( fullyCross, chunkify )
 -- (Variables)
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
 where
 
-import ParserDS
+
 import qualified Data.Map as M
 import Data.Maybe
+import Control.Monad.Trans.State
+import Control.Monad (replicateM)
 
+import ParserDS
 import DataStructures
 
 
 
+
+type Levels = [[Var]]
+
+-- first we figure out how many unique elements there are in the crossing
+-- ie for the fully crossing of x & y, this is 4: [x, y], [x, -y], [-x, y], [-x, -y]
+-- then we need that number SQUARED (because you need to mark which of the unique ones is set for each element)
+fullyCross :: Levels -> State (Count, CNF) [CountingConstraint]
+fullyCross inList = do
+  let numUniqueElems = product $ map length inList
+  newVars <- replicateM (numUniqueElems ^ 2) getFresh
+  let allUnique = sequence inList
+  -- let boundVars = -- aDoubleImpliesList
+  return []
+
+-- chunks a list into chunkSize sized chunks
+chunkify :: [Int] -> Int -> [[Int]]
+chunkify [] _ = []
+chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
 
 -- experiment (Block (fully-crossed design) theConstraints)
 --        where

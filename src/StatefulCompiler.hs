@@ -5,7 +5,7 @@ module StatefulCompiler
 -- debugging ^^
 , assertKofN, kLessThanN, kGreaterThanN
 , halfAdder, fullAdder, rippleCarry, popCount
-, andCNF )
+, andCNF, doubleImplies, aDoubleImpliesBandC )
 where
 
 import Control.Monad.Trans.State
@@ -14,42 +14,43 @@ import System.Random
 
 import DataStructures
 
+---------------------------------------------------------------------
 -- these are defined in DataStructures.hs, just here for reference
+---------------------------------------------------------------------
 -- -- AND of ORs
 -- type Count = Int
 -- type Var = Int
 -- type CNF = [[Var]]
 
-------------------------------------------------------------------
----------- Helpful State Abstractions ----------------------------
+-- ---------- Helpful State Abstractions ----------------------------
+--
+-- emptyState :: (Count, CNF)
+-- emptyState = (1, [])
+--
+-- -- if we need to start with variables 1-maxVar
+-- initState :: Int -> (Count, CNF)
+-- initState maxVar = (maxVar, [])
+--
+-- getFresh :: State (Count, CNF) Count
+-- getFresh =  do (numVars, x) <- get
+--                put (numVars + 1, x)
+--                return (numVars + 1)
+--
+-- appendCNF :: CNF -> State (Count, CNF) ()
+-- appendCNF newEntry = do (x, accum) <- get
+--                         put (x, newEntry ++ accum)
+--                         return ()
+--
+-- zeroOut :: [Var] -> State (Count, CNF) ()
+-- zeroOut inList = appendCNF $ map (\x -> [-x]) inList
+--
+-- setToOne :: Var -> State (Count, CNF) ()
+-- setToOne x = appendCNF [[x]]
+--
+-- setToZero :: Var -> State (Count, CNF) ()
+-- setToZero x = appendCNF [[-x]]
 
-emptyState :: (Count, CNF)
-emptyState = (1, [])
-
--- if we need to start with variables 1-maxVar
-initState :: Int -> (Count, CNF)
-initState maxVar = (maxVar, [])
-
-getFresh :: State (Count, CNF) Count
-getFresh =  do (numVars, x) <- get
-               put (numVars + 1, x)
-               return (numVars + 1)
-
-appendCNF :: CNF -> State (Count, CNF) ()
-appendCNF newEntry = do (x, accum) <- get
-                        put (x, newEntry ++ accum)
-                        return ()
-
-zeroOut :: [Var] -> State (Count, CNF) ()
-zeroOut inList = appendCNF $ map (\x -> [-x]) inList
-
-setToOne :: Var -> State (Count, CNF) ()
-setToOne x = appendCNF [[x]]
-
-setToZero :: Var -> State (Count, CNF) ()
-setToZero x = appendCNF [[-x]]
-
-
+---------------------------------------------------------------------
 ------------------------------------------------------------------
 ---------- High Level Functions (Assert ==, <, >) ----------------
 
@@ -238,8 +239,20 @@ doubleImplies a b = [[a, -b], [-a, b]]
 
 -- a <=> (b and c)  = (-a v b) ^ (-a v c) ^ (a v -b v -c)
 -- Thanks wolfram alpha :heart: (see note: wolfram_doubleimplies.txt)
-aDoubleImpliesBandC :: Int -> Int -> Int -> CNF
+aDoubleImpliesBandC :: Var -> Var -> Var -> CNF
 aDoubleImpliesBandC a b c = [[-a, b], [-a, c], [a, -b, -c]]
+
+-- the double-implication generalization
+-- https://www.wolframalpha.com/input/?i=CNF+A++%3C%3D%3E+(B+%26%26+C+%26%26+D+%26%26+E)
+-- CNF A  <=> (B && C && D)
+-- (-a or b)
+-- (-a or c)
+-- (-a or d)
+-- (a or -b or -c or -d)
+aDoubleImpliesList :: Var -> [Var] -> CNF
+        -- makes the list of [-b, -c, .., a] : makes the lists [-a, b], [-a, c], ...
+aDoubleImpliesList a inList = (map ((-1) *) inList ++ [a]) : map (\x -> [-a, x]) inList
+
 
 -- wraps in an extra layer: this is just for readabilty
 andCNF :: [Int] -> CNF

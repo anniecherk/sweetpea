@@ -20,10 +20,7 @@ import StatefulCompiler
 -- ir = LLIR constraints 4
 -- generateCNF ir
 
--- It seems repetitive to have each operation hold on to the args
--- given that all args are the same, but if the functionality changes in
--- the future, this will be a lot less painful to refactor
-data CountingConstraint = Exactly Int [Var] | GreaterThan Int [Var] | LessThan Int [Var] deriving(Show)
+
 -- all the constraints w/ their args & blocks; total # of vars
 data LLIR = LLIR [CountingConstraint] Int deriving(Show)
 
@@ -31,13 +28,10 @@ data LLIR = LLIR [CountingConstraint] Int deriving(Show)
 generateCNF :: LLIR -> CNF
 generateCNF (LLIR constraints globalVarCount) = snd $ execState (generateCNFWorker constraints) (initState globalVarCount)
     where generateCNFWorker :: [CountingConstraint] -> State (Count, CNF) ()
-        --TODO  generateCNFWorker [] = return
-          generateCNFWorker (Exactly     k block:[]) = assertKofN    k block
-          generateCNFWorker (GreaterThan k block:[]) = kGreaterThanN k block
-          generateCNFWorker (LessThan    k block:[]) = kLessThanN    k block
-          generateCNFWorker (Exactly     k block:xs) = assertKofN    k block >> generateCNFWorker xs
-          generateCNFWorker (GreaterThan k block:xs) = kGreaterThanN k block >> generateCNFWorker xs
-          generateCNFWorker (LessThan    k block:xs) = kLessThanN    k block >> generateCNFWorker xs
+          generateCNFWorker [] = return ()
+          generateCNFWorker (Exactly k block     : xs) = assertKofN    k block >> generateCNFWorker xs
+          generateCNFWorker (GreaterThan k block : xs) = kGreaterThanN k block >> generateCNFWorker xs
+          generateCNFWorker (LessThan k block    : xs) = kLessThanN    k block >> generateCNFWorker xs
 
 
 

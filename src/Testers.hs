@@ -123,57 +123,9 @@ popCountKlessthanDIMACS numDigs k = showDIMACS cnf finalNVars
 popCountAllKlessthanNDIMACS :: Int -> [String] -- NOTE: this doesn't check that fewer than 0 are true (duh)
 popCountAllKlessthanNDIMACS numDigs = map (popCountKlessthanDIMACS numDigs) [1.. numDigs]
 --
---
--- --------- Testing ! ------------------------------------------------------------
--- -- result <- readFile "popCountResults/3_popCounter_1.sol"
---
--- -- -- TODO: combine these two functions!
--- -- testKofNResult :: String -> Int -> Int -> SATResult
--- -- testKofNResult result k nsetVars
--- -- | numLines == 1 = Unsatisfiable
--- -- | otherwise = correct
--- -- where numLines = length $ lines result
--- --       resVars = snd $ popCount [1.. setVars]
--- --       inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
--- --       correct = case inList of
--- --         Nothing -> ParseError
--- --         Just x -> popCountCorrectHuh x setVars resVars
--- --
--- -- popCountCorrectHuh :: [Int] -> Int -> [Int] -> SATResult
--- -- popCountCorrectHuh inList setVars resVars
--- --   | nSetBits == resSetBits = Correct
--- --   | otherwise = WrongResult nSetBits resSetBits
--- --   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
--- --         resBools = map ((> 0) . (inList !!) . subtract 1) resVars
--- --         resSetBits = foldl (\acc bit -> if bit then acc*2+1 else acc*2) 0 resBools
---
--- -- testResult :: String -> Int -> ([Int] -> Int -> [Int] -> SATResult) -> SATResult
--- -- testResult result setVars validationFunction
--- --   | numLines == 1 = Unsatisfiable
--- --   | otherwise = correct
--- --   where numLines = length $ lines result
--- --         resVars = snd $ popCount [1.. setVars]
--- --         inList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
--- --         correct = case inList of
--- --           Nothing -> ParseError
--- --           Just x -> validationFunction x setVars resVars
---
--- ----------
---
---
---
---
---
--- -- file = "3_of_6_test.cryptosol"
--- -- result <- readFile file
--- -- k = 3
--- -- setVars = 6
--- --
--- -- testResultKofN result k setVars
---
---
--- ----
---
+
+
+------ System Testing ----------------------------------------------------------
 
 testResultPopCount :: String -> Int -> SATResult
 testResultPopCount result setVars
