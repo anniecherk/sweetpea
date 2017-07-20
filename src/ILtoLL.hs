@@ -1,29 +1,82 @@
 module ILtoLL
+( generateCNF, CountingConstraint(..), LLIR(..))
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
 where
 
+import Control.Monad.Trans.State
 import qualified Data.Map as M
 import Data.List (tails)
 
 import ParserDS
 import HLtoIL
 import DataStructures
+import StatefulCompiler
+
+
+-- useage
+-- inList = [1..4]
+-- constraints = [GreaterThan 1 inList, LessThan 3 inList]
+-- ir = LLIR constraints 4
+-- generateCNF ir
+
+-- It seems repetitive to have each operation hold on to the args
+-- given that all args are the same, but if the functionality changes in
+-- the future, this will be a lot less painful to refactor
+data CountingConstraint = Exactly Int [Var] | GreaterThan Int [Var] | LessThan Int [Var] deriving(Show)
+-- all the constraints w/ their args & blocks; total # of vars
+data LLIR = LLIR [CountingConstraint] Int deriving(Show)
+
+
+generateCNF :: LLIR -> CNF
+generateCNF (LLIR constraints globalVarCount) = snd $ execState (generateCNFWorker constraints) (initState globalVarCount)
+    where generateCNFWorker :: [CountingConstraint] -> State (Count, CNF) ()
+        --TODO  generateCNFWorker [] = return
+          generateCNFWorker (Exactly     k block:[]) = assertKofN    k block
+          generateCNFWorker (GreaterThan k block:[]) = kGreaterThanN k block
+          generateCNFWorker (LessThan    k block:[]) = kLessThanN    k block
+          generateCNFWorker (Exactly     k block:xs) = assertKofN    k block >> generateCNFWorker xs
+          generateCNFWorker (GreaterThan k block:xs) = kGreaterThanN k block >> generateCNFWorker xs
+          generateCNFWorker (LessThan    k block:xs) = kLessThanN    k block >> generateCNFWorker xs
 
 
 
 
--- type Var = Int
--- data LLIR = [LLConstraints]
+
+-- processConstraints
+
+-- generateCNF (Exactly k block):xs
+
+
+
+
+
+
+
+
+
+
 -- type CompilerFunc = Int -> [Var] -> State (Count, CNF) ()
--- data LLConstraints = (CompilerFunc, Int, [Var])
---
+-- data LLConstraint = LLConstraint CompilerFunc Int [Var]
+
+
+
+
 -- -- evalState
 -- initState :: Int -> (Count, CNF)
 -- initState nVars = (nVars, [])
---
 
 
+
+
+
+
+
+
+
+-- data CompilerOp = LessThan Int | GreaterThan Int | Exactly Int
+-- type LLConstraint = (CompilerOp, Variables)
+-- type LLIR =[LLConstraint]
 
 
 
@@ -53,9 +106,7 @@ import DataStructures
 
 
 
--- data CompilerOp = LessThan Int | GreaterThan Int | Exactly Int
--- type LLConstraint = (CompilerOp, Variables)
--- type LLIR =[LLConstraint]
+
 --
 --
 -- -- data IL_Constraint =
