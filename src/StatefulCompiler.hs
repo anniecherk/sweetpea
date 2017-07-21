@@ -9,7 +9,6 @@ module StatefulCompiler
 where
 
 import Control.Monad.Trans.State
-import Control.Monad (replicateM)
 import System.Random
 
 import DataStructures
@@ -85,7 +84,7 @@ kGreaterThanN = inequality False
 inequality :: Bool -> Int -> [Var] -> State (Count, CNF) ()
 inequality isLessThan kInt inList = do
     popCountSum <- popCount inList
-    kVars <- replicateM kInt getFresh
+    kVars <- getNFresh kInt
     appendCNF $ map (:[]) $ zipWith (*) kVars $ toBinary kInt []
     if isLessThan
     then subtract' kVars popCountSum
@@ -98,7 +97,7 @@ subtract' :: [Var] -> [Var] -> State (Count, CNF) ()
 subtract' k n = do
   twosCompN <- toNegTwosComp n
   -- zero pad twosCompK until it's the same size as twosCompN
-  zeroPadding <- replicateM (length twosCompN - length k) getFresh
+  zeroPadding <- getNFresh (length twosCompN - length k)
   zeroOut zeroPadding -- this updates our CNF constraints to make sure those vars are actually 0
   let twosCompK = zeroPadding ++ k --prepend zeropadding
   -- add em up
@@ -115,13 +114,13 @@ subtract' k n = do
 toNegTwosComp :: [Int] -> State (Count, CNF) [Int]
 toNegTwosComp inList = do  ----- NEGATE & FLIP THE BITS --------
       -- get new vars, 1 more than inList so we can set the top bit
-      flippedBitsVars <- replicateM (1 + length inList) getFresh
+      flippedBitsVars <- getNFresh(1 + length inList)
       setToOne $ head flippedBitsVars -- sets top bit to "one" to negate
       -- flip the bits, ie assert freshVar_i iff ~inputVar_i
       appendCNF $ concat $ zipWith doubleImplies (tail flippedBitsVars) (map (\x -> -x) inList)
       ------- GET THE "ONE" TO ADD ----------------
       -- make a zero padded one (for the addition) of the right dimensions
-      oneVars <- replicateM (1 + length inList) getFresh
+      oneVars <- getNFresh (1 + length inList)
       -- set all the top bits to 0, the bottom bit to 1, ie 0001
       zeroOut $ init oneVars
       setToOne $ last oneVars
@@ -200,7 +199,7 @@ rippleCarry as bs = do cin <- getFresh
 popCount :: [Var] -> State (Count, CNF) [Var]
 popCount [] = error "Why did you call popcount with an empty list?"
 popCount inList = do let nearestLargestPow = ceiling $ logBase 2 $ fromIntegral $ length inList --pad out with 0's to a power of 2
-                     auxList <- replicateM (2^nearestLargestPow - length inList) getFresh -- grab that many fresh vars
+                     auxList <- getNFresh (2^nearestLargestPow - length inList) -- grab that many fresh vars
                      zeroOut auxList -- make sure we add all the fake 0'd out aux vars to the cnf...
                      popCountLayer $ map (: []) (inList ++ auxList)
 

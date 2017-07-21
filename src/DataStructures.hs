@@ -1,6 +1,6 @@
 module DataStructures
 ( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..)
-, emptyState, initState, getFresh, appendCNF, zeroOut, setToOne, setToZero )
+, emptyState, initState, getFresh, getNFresh, appendCNF, zeroOut, setToOne, setToZero )
 where
 
 import Control.Monad.Trans.State
@@ -36,6 +36,10 @@ getFresh :: State (Count, CNF) Count
 getFresh =  do (numVars, x) <- get
                put (numVars + 1, x)
                return (numVars + 1)
+
+getNFresh :: Int -> State (Count, CNF) [Count]
+getNFresh n = replicateM n getFresh
+
 
 appendCNF :: CNF -> State (Count, CNF) ()
 appendCNF newEntry = do (x, accum) <- get
