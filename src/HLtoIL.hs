@@ -1,5 +1,5 @@
 module HLtoIL
-( fullyCross, chunkify )
+( fullyCross, chunkify, makeFields )
 -- (Variables)
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
@@ -8,6 +8,7 @@ where
 
 import qualified Data.Map as M
 import Data.Maybe
+import Data.List (nub)
 import Control.Monad.Trans.State
 import Control.Monad (replicateM)
 
@@ -17,16 +18,35 @@ import DataStructures
 
 
 
-type Levels = [[Var]]
+type Levels = [[Index]]
+
+-- mutually exclusive fields actually
+-- asserts that only one of the list can be true
+-- (a and -b and -c) or (-a and b and c) or (-a and -b and c)... but in CNF
+-- which is: (a or b or c) and (-a or -b) and (-b or -c) and (-a or -c)
+makeFields :: [Var] -> State (Count, CNF) ()
+makeFields inList = do appendCNF [inList] -- this appends (a or b or c)
+                       appendCNF $ not_pairs inList -- appends the (-a or -b) and (-b or -c) etc pairs
+  where not_pairs xs = nub [[-x, -y] | x <- xs, y <- xs, x < y]
+
+-- hold on to your hats cause we've got shit to get done
+-- input is a list of levels w. nesting : [[1, 2], [3, 4, 5]]
+-- each trial is going to be encoded as a list of 5 variables, 2 of which will be set for each trial
+-- each trial is *also* going to have a list of 6 *more* variables, for enforcing the fullycross'edness, 1 of which will be set
 
 -- first we figure out how many unique elements there are in the crossing
 -- ie for the fully crossing of x & y, this is 4: [x, y], [x, -y], [-x, y], [-x, -y]
 -- then we need that number SQUARED (because you need to mark which of the unique ones is set for each element)
 fullyCross :: Levels -> State (Count, CNF) [CountingConstraint]
 fullyCross inList = do
-  let numUniqueElems = product $ map length inList
-  newVars <- replicateM (numUniqueElems ^ 2) getFresh
-  let allUnique = sequence inList
+  -- let numUniqueElems = product $ map length inList
+  -- newVars <- replicateM (numUniqueElems ^ 2) getFresh
+  -- if the input is [[1, 2] [3, 4]] this is [[1, 3], [1, 4], [2, 3], [2, 4]]
+  let allUniqueIndices = sequence inList
+  -- this gets you N objects each with N (one-hot encoded) fields.
+  objects <- replicateM (length allUniqueIndices ^ 2) getFresh
+
+
   -- let boundVars = -- aDoubleImpliesList
   return []
 

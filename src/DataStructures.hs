@@ -1,5 +1,5 @@
 module DataStructures
-( CNF, Var, Count, SATResult(..), CountingConstraint(..)
+( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..)
 , emptyState, initState, getFresh, appendCNF, zeroOut, setToOne, setToZero )
 where
 
