@@ -1,5 +1,6 @@
 module HLtoIL
-( fullyCross, chunkify, enforceOneHot )
+( -- fullyCross,
+chunkify, enforceOneHot, chunkifyLike )
 -- (Variables)
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
@@ -29,6 +30,15 @@ enforceOneHot inList = do appendCNF [inList] -- this appends (a or b or c)
                           appendCNF $ not_pairs inList -- appends the (-a or -b) and (-b or -c) etc pairs
   where not_pairs xs = nub [[-x, -y] | x <- xs, y <- xs, x < y]
 
+
+
+makeTrial :: Int -> State (Count, CNF) [Var]
+makeTrial size = getNFresh size
+
+
+
+-- {--
+
 -- ladies and gentlemen hold on to your hats
 -- input is a list of levels w. nesting : [[1, 2], [3, 4, 5]]
 -- each trial is going to be encoded as a list of 5 variables, 2 of which will be set for each trial
@@ -38,19 +48,63 @@ enforceOneHot inList = do appendCNF [inList] -- this appends (a or b or c)
 -- ie for the fully crossing of x & y, this is 4: [x, y], [x, -y], [-x, y], [-x, -y]
 -- then we need that number SQUARED (because you need to mark which of the unique ones is set for each element)
 fullyCross :: Levels -> State (Count, CNF) [CountingConstraint]
-fullyCross inList = do
-  -- let numUniqueElems = product $ map length inList
-  -- newVars <- replicateM (numUniqueElems ^ 2) getFresh
+fullyCross levelShape = do
   -- if the input is [[1, 2] [3, 4]] this is [[1, 3], [1, 4], [2, 3], [2, 4]]
-
-  let numStates = length $ sequence inList -- a state is one of the possible trials in the full crossing (ie the 6 above)
-  let numFields = length $ concat inList -- this is the object encoding (ie 5 above)
+  let states = sequence levelShape
+  let numStates = length states -- a state is one of the possible trials in the full crossing (ie the 6 above)
+  let numFields = length $ concat levelShape -- this is the object encoding (ie 5 above)
   -- this gets you N objects each with N (one-hot encoded) fields.
+--  let trials = map (\x-> makeTrial numStates) [1..numFields]
   objects <- getNFresh (numStates * numFields)
+
+  -- okay now let's get some things straight around here
+  -- only 1 item out of every level can be true:
+  -- group them up
+  let groupedLists = chunkifyLike levelShape objects
+  mapM_ enforceOneHot groupedLists
+
+  -- fullycrossed constraints: grab fresh new vars
+  stateVariables <- getNFresh (numStates ^ 2)
+  -- divide up stateVariables by object, and the zip w. the states- this gives each variable an assignment that we'll bind in a hot sec
+  let matchedUp = concatMap (zip states) $ chunkify stateVariables 6
+  -- this statefully binds each var to it's assigned state
+  mapM_ (\(state, var) -> aDoubleImpliesList var state) matchedUp
+
 
 
   -- let boundVars = -- aDoubleImpliesList
   return []
+
+
+
+-- inList = [[1, 2], [3, 4, 5]]
+-- let numStates = length $ sequence inList -- a state is one of the possible trials in the full crossing (ie the 6 above)
+-- let numFields = length $ concat inList
+-- objects = [6.. numStates*numFields+5]
+-- chunkify objects 5
+
+--}
+
+
+
+-- okay this is really janky but the idea is I've got a list that defines the SHAPE like
+-- [[1, 2], [3, 4, 5]]
+-- and a list with CONTENT like [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] (called todo)
+-- and this function produces list with the content in the right shape like
+-- [[1, 2], [3, 4, 5], [6, 7], [8, 9, 10]]
+chunkifyLike :: [[Int]] -> [Int] -> [[Int]]
+chunkifyLike shape content = cLWorker shape shape content []
+  where cLWorker :: [[Int]] -> [[Int]]-> [Int] -> [[Int]] -> [[Int]]
+        cLWorker _ _ [] accum = reverse accum
+        cLWorker shape [] todo accum = cLWorker shape shape todo accum -- really janky, restart shaping
+        cLWorker shape (s:sAccum) todo accum = cLWorker shape sAccum newTodo newAccum
+          where reshapedContent = take (length s) todo
+                newTodo = drop (length s) todo
+                newAccum = reshapedContent : accum
+
+
+
+
 
 -- chunks a list into chunkSize sized chunks
 chunkify :: [Int] -> Int -> [[Int]]

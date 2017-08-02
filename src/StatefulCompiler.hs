@@ -1,11 +1,7 @@
 module StatefulCompiler
 ( emptyState, initState
--- debugging vv
-, getFresh
--- debugging ^^
 , assertKofN, kLessThanN, kGreaterThanN
-, halfAdder, fullAdder, rippleCarry, popCount
-, andCNF, doubleImplies, aDoubleImpliesBandC )
+, halfAdder, fullAdder, rippleCarry, popCount)
 where
 
 import Control.Monad.Trans.State
@@ -229,45 +225,47 @@ formatSum :: [Var] -> [Var] -> [Var]
 formatSum cs ss = maximum cs : reverse ss
 
 
-------------------------------------------------------------------
----------- Helper Functions --------------------------------------
-
--- (a or ~b) and (~a or b)
-doubleImplies :: Int -> Int -> CNF
-doubleImplies a b = [[a, -b], [-a, b]]
-
--- a <=> (b and c)  = (-a v b) ^ (-a v c) ^ (a v -b v -c)
--- Thanks wolfram alpha :heart: (see note: wolfram_doubleimplies.txt)
-aDoubleImpliesBandC :: Var -> Var -> Var -> CNF
-aDoubleImpliesBandC a b c = [[-a, b], [-a, c], [a, -b, -c]]
-
--- the double-implication generalization
--- https://www.wolframalpha.com/input/?i=CNF+A++%3C%3D%3E+(B+%26%26+C+%26%26+D+%26%26+E)
--- CNF A  <=> (B && C && D)
--- (-a or b)
--- (-a or c)
--- (-a or d)
--- (a or -b or -c or -d)
-aDoubleImpliesList :: Var -> [Var] -> CNF
-        -- makes the list of [-b, -c, .., a] : makes the lists [-a, b], [-a, c], ...
-aDoubleImpliesList a inList = (map ((-1) *) inList ++ [a]) : map (\x -> [-a, x]) inList
-
-
--- wraps in an extra layer: this is just for readabilty
-andCNF :: [Int] -> CNF
-andCNF = return --(: [])
-
--- not A or not B
-nAndCNF :: Int -> Int -> CNF
-nAndCNF a b = [[-a, -b]]
-
--- A xor B
--- (A or B) and (-A or -B)
-xorCNF :: Int -> Int -> CNF
-xorCNF a b = [[a, b], [-a, -b]]
-
-xNorCNF :: Int -> Int -> CNF
-xNorCNF a b = [[a, -b], [-a, b]]
-
-distribute :: Int -> CNF -> CNF
-distribute inputID = map (\orClause -> inputID : orClause)
+-- ------------------------------------------------------------------
+-- ---------- Helper Functions --------------------------------------
+--
+--    These have been moved to DataStructures.hs; left here for reference
+--
+-- -- (a or ~b) and (~a or b)
+-- doubleImplies :: Int -> Int -> CNF
+-- doubleImplies a b = [[a, -b], [-a, b]]
+--
+-- -- a <=> (b and c)  = (-a v b) ^ (-a v c) ^ (a v -b v -c)
+-- -- Thanks wolfram alpha :heart: (see note: wolfram_doubleimplies.txt)
+-- aDoubleImpliesBandC :: Var -> Var -> Var -> CNF
+-- aDoubleImpliesBandC a b c = [[-a, b], [-a, c], [a, -b, -c]]
+--
+-- -- the double-implication generalization
+-- -- https://www.wolframalpha.com/input/?i=CNF+A++%3C%3D%3E+(B+%26%26+C+%26%26+D+%26%26+E)
+-- -- CNF A  <=> (B && C && D)
+-- -- (-a or b)
+-- -- (-a or c)
+-- -- (-a or d)
+-- -- (a or -b or -c or -d)
+-- aDoubleImpliesList :: Var -> [Var] -> CNF
+--         -- makes the list of [-b, -c, .., a] : makes the lists [-a, b], [-a, c], ...
+-- aDoubleImpliesList a inList = (map ((-1) *) inList ++ [a]) : map (\x -> [-a, x]) inList
+--
+--
+-- -- wraps in an extra layer: this is just for readabilty
+-- andCNF :: [Int] -> CNF
+-- andCNF = return --(: [])
+--
+-- -- not A or not B
+-- nAndCNF :: Int -> Int -> CNF
+-- nAndCNF a b = [[-a, -b]]
+--
+-- -- A xor B
+-- -- (A or B) and (-A or -B)
+-- xorCNF :: Int -> Int -> CNF
+-- xorCNF a b = [[a, b], [-a, -b]]
+--
+-- xNorCNF :: Int -> Int -> CNF
+-- xNorCNF a b = [[a, -b], [-a, b]]
+--
+-- distribute :: Int -> CNF -> CNF
+-- distribute inputID = map (\orClause -> inputID : orClause)
