@@ -1,6 +1,10 @@
 module HLtoIL
 ( -- fullyCross,
-chunkify, enforceOneHot, chunkifyLike )
+   enforceOneHot
+-- for testing v
+ , makeTrial, getLevelByIndex
+-- for testing ^
+ , chunkifyLike, chunkify )
 -- (Variables)
 -- ( decodeHL_IR, decodeFactorPaths, decodeRawConstraint
 --   , FactorPath, FactorPaths, FullyCross(..), RawConstraint(..), HL_IR(..) )
@@ -11,6 +15,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Data.List (nub)
 import Control.Monad.Trans.State
+import Control.Monad (replicateM)
 
 
 import ParserDS
@@ -32,12 +37,74 @@ enforceOneHot inList = do appendCNF [inList] -- this appends (a or b or c)
 
 
 
-makeTrial :: Int -> State (Count, CNF) [Var]
-makeTrial size = getNFresh size
+makeTrial :: Int -> Int -> State (Count, CNF) Trial
+makeTrial numFields numStates = do
+        fieldVars <- getNFresh numFields
+        stateVars <- getNFresh numStates
+        return $ Trial numFields fieldVars numStates stateVars
+
+
+-- ladies and gentlemen hold on to your hats
+-- input is a list of levels w. nesting : [[1, 2], [3, 4, 5]]
+-- each trial is going to be encoded as a list of 5 variables, 2 of which will be set for each trial
+-- each trial is going to have *an additional* list of 6 *more* variables, for enforcing the fullycross'edness, 1 of which will be set
+
+-- first we figure out how many unique elements there are in the crossing
+-- ie for the fully crossing of x & y, this is 4: [x, y], [x, -y], [-x, y], [-x, -y]
+-- then we need that number SQUARED (because you need to mark which of the unique ones is set for each element)
+fullyCross :: Levels -> State (Count, CNF) [CountingConstraint]
+fullyCross levelShape = do
+      let states = sequence levelShape
+      let numFields = length $ concat levelShape -- this is the object encoding (ie 5 above)
+      let numStates = length states -- a state is one of the possible trials in the full crossing (ie the 6 above)
+      trials <- replicateM numStates $ makeTrial numFields numStates
+      return []
+
+
+-- import Control.Monad.Trans.State
+-- import Control.Monad (replicateM)
+-- trials = evalState (replicateM 6 $ makeTrial 5 6) emptyState
+
+getLevelByIndex :: [Trial] -> Index -> [Var]
+getLevelByIndex trials index
+  | (index > -1) && (index < numFields (head trials)) = map (\trial -> fieldVars trial !! index) trials
+  | otherwise = error $ "getLevelByIndex index is out of bounds. \nTrials: " ++ show trials ++ "\n Index: " ++ show index
 
 
 
--- {--
+-- data Trial = Trial { numFields :: Int -- fields are one-hot encoded levels
+--                    , fieldVars :: [Var]
+--                    , numStates :: Int -- states are for enforcing constraints to ensure fully-crossed
+--                    , stateVars :: [Var]
+
+
+
+--  getNFresh size
+
+
+-- data Trial = Trial { numFields :: Int -- fields are one-hot encoded levels
+--                    , fieldVars :: [Var]
+--                    , numStates :: Int -- states are for enforcing constraints to ensure fully-crossed
+--                    , stateVars :: [Var]
+--                     } deriving (Show)
+
+
+{--
+high level state:
+Level :: numLevels, [names]
+Levels :: [Level], shape list
+Constraints :: ??
+-- TODO: worry about design after this is figured out
+-- step 1: support fully crossed constraints no bells no whistles
+
+
+blocks :
+fullyCrossed -> variables made referencing Levels & Var/CNF and also constraints appended to CNF state
+sampled -> randomly selected (just different constraints)
+--}
+
+
+{--
 
 -- ladies and gentlemen hold on to your hats
 -- input is a list of levels w. nesting : [[1, 2], [3, 4, 5]]
@@ -53,14 +120,15 @@ fullyCross levelShape = do
   let states = sequence levelShape
   let numStates = length states -- a state is one of the possible trials in the full crossing (ie the 6 above)
   let numFields = length $ concat levelShape -- this is the object encoding (ie 5 above)
-  -- this gets you N objects each with N (one-hot encoded) fields.
---  let trials = map (\x-> makeTrial numStates) [1..numFields]
-  objects <- getNFresh (numStates * numFields)
+
+  -- allocate as many objects as states (try a small example to verify this is the thing to do)
+  objects <- mapM (\x-> makeTrial numStates numFields) [1..numStates]
+
 
   -- okay now let's get some things straight around here
   -- only 1 item out of every level can be true:
   -- group them up
-  let groupedLists = chunkifyLike levelShape objects
+  let groupedLists = chunkifyLike levelShape (map fieldVars objects)
   mapM_ enforceOneHot groupedLists
 
   -- fullycrossed constraints: grab fresh new vars
@@ -75,6 +143,9 @@ fullyCross levelShape = do
   -- let boundVars = -- aDoubleImpliesList
   return []
 
+--}
+
+
 
 
 -- inList = [[1, 2], [3, 4, 5]]
@@ -84,6 +155,19 @@ fullyCross levelShape = do
 -- chunkify objects 5
 
 --}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

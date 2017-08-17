@@ -3,6 +3,7 @@
 import Test.Tasty
 import Test.Tasty.HUnit
 import Control.Monad.Trans.State
+import Control.Monad (replicateM)
 
 
 
@@ -20,7 +21,7 @@ tests :: TestTree
 tests = testGroup "Tests" [hlToIlTests, dataStructureTests]
 
 hlToIlTests :: TestTree
-hlToIlTests = testGroup "HLtoIL Tests" [oneHotTests]
+hlToIlTests = testGroup "HLtoIL Tests" [oneHotTests, makeTrialTests]
 
 dataStructureTests :: TestTree
 dataStructureTests = testGroup "DataStructure Tests" [helperTests]
@@ -43,7 +44,22 @@ oneHotTests = testGroup "one hot tests"
         @?= (6,[[-1,-2],[-1,-3],[-1,-4],[-2,-3],[-2,-4],[-3,-4],[1,2,3,4]]) -- TODO: check against cryptosatmini
   ]
 
+makeTrialTests = testGroup "make trials"
+  [ testCase "make 2 trials (2x2)" $
+    evalState (replicateM 2 $ makeTrial 2 2) emptyState
+      @?= [Trial {numFields = 2, fieldVars = [1,2], numStates = 2, stateVars = [3,4]},Trial {numFields = 2, fieldVars = [5,6], numStates = 2, stateVars = [7,8]}]
+  ]
 
+getLevelByIndexTests = testGroup "get level by index"
+  [ testCase "getting the 0th index" $
+      getLevelByIndex (evalState (replicateM 6 $ makeTrial 5 6) emptyState) 0
+        @?= [1,12,23,34,45,56]
+  ]
+
+
+
+
+---------------------------------------------------------------------------------------------------------------
 -- DataStructures tests
 
 helperTests = testGroup "var/cnf utility tests"
