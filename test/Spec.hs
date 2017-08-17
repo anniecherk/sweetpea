@@ -2,28 +2,38 @@
 
 import Test.Tasty
 import Test.Tasty.HUnit
+import Control.Monad.Trans.State
 
 
-import Parser
--- import HL_to_IL
--- import IL_to_LL
 
-main = putStrLn "not set up"
--- main = defaultMain tests
---
--- tests :: TestTree
--- tests = testGroup "Tests" [parserTests, hlToIlTests]
---
--- hlToIlTests :: TestTree
--- hlToIlTests = testGroup "HLtoIL Tests" [factorPathTests, rawConstraintsTests, fullSpecTests]
---
--- parserTests :: TestTree
--- parserTes--ts = testGroup "Parser Tests" [factorPathTests, rawConstraintsTests, fullSpecTests]
+import HLtoIL
+import DataStructures
+
+
+main = defaultMain tests --putStrLn "not set up"
+
+
+
+
+
+tests :: TestTree
+tests = testGroup "Tests" [hlToIlTests]
+
+hlToIlTests :: TestTree
+hlToIlTests = testGroup "HLtoIL Tests" [oneHotTests]
+
 
 ---------------------------------------------------------------------------------------------------------------
 -- HL to IL Tests
 
-
+oneHotTests = testGroup "one hot tests"
+  [ testCase "empty edgecase" $
+      execState (enforceOneHot []) (initState 0)
+        @?= (0,[[]])
+  ,  testCase "small example: 2 elements" $
+      execState (enforceOneHot [1..2]) (initState 2)
+        @?= (2,[[-1,-2],[1,2]])
+  ]
 
 
 ---------------------------------------------------------------------------------------------------------------
