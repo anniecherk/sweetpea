@@ -2,7 +2,7 @@
 -- careful! interface is NOT consistent! Currently only aDoubleImpliesList is stateful
 
 module DataStructures
-( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..)
+( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..), Trial(..)
 , emptyState, initState, getFresh, getNFresh, appendCNF, zeroOut, setToOne, setToZero
 , distribute, xNorCNF, xorCNF, nAndCNF, andCNF, aDoubleImpliesList, doubleImplies, aDoubleImpliesBandC )
 where
@@ -21,8 +21,14 @@ type CNF = [[Var]]
 -- the future, this will be a lot less painful to refactor
 data CountingConstraint = Exactly Int [Var] | GreaterThan Int [Var] | LessThan Int [Var] deriving(Show)
 
+data Trial = Trial { numFields :: Int -- fields are one-hot encoded levels
+                   , fieldVars :: [Var]
+                   , numStates :: Int -- states are for enforcing constraints to ensure fully-crossed
+                   , stateVars :: [Var]
+                    } deriving (Show)
 
--- Trial :: 
+
+-- Trial ::
 -- # states       # fields         # fieldVars     # stateVars
 -- (4 fully x'd) (for constraints)
 --
@@ -37,7 +43,7 @@ data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deri
 ---------- Helpful State Abstractions ----------------------------
 
 emptyState :: (Count, CNF)
-emptyState = (1, [])
+emptyState = (0, [])
 
 -- if we need to start with variables 1-maxVar
 initState :: Int -> (Count, CNF)
@@ -46,7 +52,7 @@ initState maxVar = (maxVar, [])
 getFresh :: State (Count, CNF) Count
 getFresh =  do (numVars, x) <- get
                put (numVars + 1, x)
-               return (numVars + 1)
+               return (numVars+1)
 
 getNFresh :: Int -> State (Count, CNF) [Count]
 getNFresh n = replicateM n getFresh
