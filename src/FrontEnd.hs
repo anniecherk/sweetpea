@@ -5,12 +5,14 @@ module FrontEnd
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
-, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, runExperiment )
+, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, runExperiment, decode )
 where
 
 import Data.List (transpose, nub)
 import DataStructures
 import Control.Monad.Trans.State
+import Text.Read (readMaybe)
+import Control.Monad
 
 -- At the "High Level" blocks are non-overlapping SPANS. They know how many trials they contain
 -- and what the "design" of the trial is- the design is a tree which you
@@ -61,17 +63,12 @@ data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
 -- the low level AST is just a list of "commands" to execute
 type LLAST = [LLConstraint]
 
--------------------------------
+-------------------------------------------------------------
 -- I would have called it go!!! but bang isn't a valid identifier character
 runExperiment :: HLAST -> (Int, CNF)
 runExperiment ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 
--------------------------------
-
--- constructor which gloms on consistency constraint to HLBlocks
-makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
-makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
-
+-------------------------------------------------------------
 -- reports number of leaf nodes in tree
 -- ie, countLeaves (color, (ltcolor, (red, blue)), (dkcolor, (blue, blue))) == 4
 countLeaves :: HLLabelTree -> Int
@@ -82,11 +79,25 @@ countLeaves (LeafNode _) = 1
 totalLeavesInDesign :: Design -> Int
 totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
+-- leafNamesInDesign design
+-- ["red","blue","circle","square"]
+leafNamesInDesign :: Design -> [String]
+leafNamesInDesign = concatMap getLeafNames
+
+getLeafNames :: HLLabelTree -> [String]
+getLeafNames (NTNode _ children) = foldl (\acc x -> acc ++ getLeafNames x) [] children
+getLeafNames (LeafNode name) = [name]
+-------------------------------------------------------------
+
+-- constructor which gloms on consistency constraint to HLBlocks
+makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
+makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
+
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
 fullyCrossSize :: Design -> Int
 fullyCrossSize factors = numStates
   where numStates = foldl (\acc x -> acc * countLeaves x) 1 factors
-
+-------------------------------------------------------------
 
 -- Transformation time!
 -- HL -> IL is variable allocation
@@ -102,7 +113,7 @@ allocateVars (HLBlock numTrials design constraints) = do
       putFresh endAddr
       return $ ILBlock numTrials startAddr endAddr design constraints
 
-
+-------------------------------------------------------------
 -- Transformation time!
 -- IL -> LL is (HL constraints) -> (LL commands)
 ilToll :: ILAST -> State (Count, CNF) LLAST
@@ -110,8 +121,6 @@ ilToll = concatMapM ilBlockToLLBlocks
 
 ilBlockToLLBlocks :: ILBlock -> State (Count, CNF) LLAST
 ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = concatMapM (`desugarConstraint` block) constraints
-
-
 
 -- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
@@ -142,11 +151,6 @@ entangleFC :: [Int] -> [[Int]] -> [(Int, [Int])]
 entangleFC states levels = zip states (sequence levels)
 
 
--- chunks a list into chunkSize sized chunks
-chunkify :: [Int] -> Int -> [[Int]]
-chunkify [] _ = []
-chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
-
 -- make sure exactly 1 choice of every level is true
 trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency block = map OneHot allLevelPairs
@@ -168,7 +172,7 @@ getShapedLevels (ILBlock numTrials start end design _) = levelGroups
         trialShape = map countLeaves design
         levelGroups = map (`getTrialVars` trialShape) [start, (trialSize+1).. end]
 
-
+-------------------------------------------------------------
 -- Transformation time!
 -- This actually runs the commands we constructed in the low level
 buildCNF :: LLAST -> State (Int, CNF) ()
@@ -179,6 +183,25 @@ buildCommand (OneHot todo) = enforceOneHot todo
 buildCommand (Entangle state levels) = aDoubleImpliesList state levels
 buildCommand _ = error "other commands not implemented"
 
+-------------------------------------------------------------
+-- Decoding it back:
+decode :: String -> Design -> String
+decode result design
+  | numLines == 1 = "Oh no! Something was unsatisifiable, no sequence was found!"
+  | otherwise = labelling
+  where numLines = length $ lines result
+        parsedList = mapM readMaybe . init . concatMap (words . tail) . tail . lines $ result :: Maybe [Int]
+        labelling = case parsedList of
+          Nothing -> "Hmm the result file seems to be misformatted..."
+          Just vars -> label vars design
+
+label :: [Int] -> Design -> String
+label inList design = unlines $ map unwords $ chunkify selectedVarNames (length design)
+  where relevantVars = take (totalLeavesInDesign design * fullyCrossSize design) inList --HACK: actually need probably the AST instead of design
+        names = take (length relevantVars) (cycle $ leafNamesInDesign design)
+        varOn = map (> 0) relevantVars
+        selectedVarNames = map snd $ filter fst $ zip varOn names
+-------------------------------------------------------------
 
 -- mutually exclusive fields actually
 -- asserts that only one of the list can be true
@@ -194,3 +217,9 @@ enforceOneHot inList = do appendCNF [inList] -- this appends (a or b or c)
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
 concatMapM func args = do result <- mapM func args
                           return $ concat result
+
+
+-- chunks a list into chunkSize sized chunks
+chunkify :: [a] -> Int -> [[a]]
+chunkify [] _ = []
+chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
