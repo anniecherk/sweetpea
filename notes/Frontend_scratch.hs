@@ -9,6 +9,8 @@
 import Control.Monad.Trans.State
 import Control.Monad (replicateM)
 -------------------------------------------
+import Data.List (transpose)
+
 
 data HLBlock = HLBlock { hlnumTrials :: Int
                        , hldesign :: Design
@@ -26,14 +28,28 @@ data HLConstraint =  HLAssertEq Int [String] --TODO: the list of string rep, wha
                    | Consistency
                    | FullyCross deriving(Show)
 
+-- list of IL blocks
+type ILAST = [ILBlock]
 
-                  --  data HLBlock = HLBlock { hlnumTrials :: Int
-                  --                         , hldesign :: Design
-                  --                         , hlconstraints :: [HLConstraint]
-                  --                         } deriving(Show)
+-- so a block that occupies: 0, 1, 2, 3 the startAddr is 0 & the endAddr is 3
+data ILBlock = ILBlock { ilnumTrials :: Int
+                      , ilstartAddr :: Int
+                      , ilendAddr :: Int
+                      , ildesign :: Design
+                      , ilconstraints :: [HLConstraint]
+                      } deriving(Show)
 
-makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
-makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
+
+--- Transformation time!
+data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
+                 | AssertGt Int [Var] | OneHot [Var]
+                 | Entangle Var [Var] deriving(Show)
+
+-- list of IL blocks : get the total num allocated by looking at last block
+type LLBlock = [LLConstraint]
+type LLAST = [LLBlock]
+
+
 
 
 
@@ -44,9 +60,20 @@ makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
 -- color = NTNode "color" [(LeafNode "red"), (LeafNode "blue")]
 -- shape = NTNode "shape" [(LeafNode "circle"), (LeafNode "square")]
 -- design = [color, shape]
--- block = makeBlock (hlFullyCross design) [color, shape] [FullyCross]
+-- block = makeBlock (fullyCrossSize design) [color, shape] [FullyCross]
 -- ast = [block, block]
--- hlToIl ast
+-- runState (hlToIl ast >>= ilToll) emptyState
+-- runState (hlToIl ast) emptyState
+--
+--
+-- ilBlock = ILBlock {ilnumTrials = 4, ilstartAddr = 1, ilendAddr = 16, ildesign = [NTNode "color" [LeafNode "red",LeafNode "blue"],NTNode "shape" [LeafNode "circle",LeafNode "square"]], ilconstraints = [Consistency,FullyCross]}
+-- numTrials = 4
+-- states = transpose $ chunkify [17..32] 4
+-- levels = getShapedLevels ilBlock
+
+
+makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
+makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
 
 -- tests
 -- countLeaves color == 4
@@ -60,16 +87,12 @@ totalLeavesInDesign :: Design -> Int
 totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
 -- only tells you the NUMBER of TRIALS
-hlFullyCross :: Design -> Int
-hlFullyCross factors = numStates
+fullyCrossSize :: Design -> Int
+fullyCrossSize factors = numStates
   where numStates = foldl (\acc x -> acc * countLeaves x) 1 factors
 
 
-type Count = Int
-type Var = Int
-
 -- Transformation time!
--- hlToIl :: HLAST -> ILAST
 hlToIl :: HLAST -> State (Int, CNF) ILAST
 hlToIl = mapM allocateVars
 
@@ -83,39 +106,7 @@ allocateVars (HLBlock numTrials design constraints) = do
       return $ ILBlock numTrials startAddr endAddr design constraints
 
 
-
--- list of IL blocks : get the total num allocated by looking at last block
-type ILAST = [ILBlock]
-
--- so a block that occupies: 0, 1, 2, 3 the startAddr is 0 & the endAddr is 3
-data ILBlock = ILBlock { ilnumTrials :: Int
-                       , ilstartAddr :: Int
-                       , ilendAddr :: Int
-                       , ildesign :: Design
-                       , ilconstraints :: [HLConstraint]
-                       } deriving(Show)
-
-
---- Transformation time!
--- TODO: It's constraint time. How are constraints going to be represented?
--- 1. Start up the State(Int, CNF)
--- 2. Variable alloc for FC & fully cross => equate states with variable combos
--- 3.
-data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
-                  | AssertGt Int [Var] | OneHot [Var]
-                  | Entangle Var [Var] deriving(Show)
-
--- list of IL blocks : get the total num allocated by looking at last block
-type LLBlock = [LLConstraint]
-type LLAST = [LLBlock]
-
--- data LLBlock = LLBlock { llconstraints :: [LLConstraint]
---                        } deriving(Show)
-
--- concatMap sequence [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
-
-
--- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
+-- Transformation time!
 ilToll :: ILAST -> State (Count, CNF) LLAST
 ilToll ilast = do llblocks <- mapM ilBlockToLLBlocks ilast
                   return $ concat llblocks
@@ -125,33 +116,55 @@ ilBlockToLLBlocks :: ILBlock -> State (Count, CNF) [LLBlock]
 ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = mapM (\x -> desugarConstraint x block) constraints
 
 
--- ILBlock { ilnumTrials :: Int
---                        , ilstartAddr :: Int
---                        , ilendAddr :: Int
---                        , ildesign :: Design
---                        , ilconstraints
-
+-- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) LLBlock
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
-desugarConstraint FullyCross  inBlock = return [Entangle 0 [0,0]] --TODO
+desugarConstraint FullyCross  inBlock = llfullyCross inBlock
 desugarConstraint _ inBlock = error "desugar const not implemented yet"
 
 -- 1. Generate Intermediate Vars
 -- 2. Entangle them w/ block vars
 -- 3. 1 hot the *states* ie, 1 red circle, etc
-llfullyCross :: ILBlock -> [LLConstraint]
-llfullyCross (ILBlock numTrials start end design _) = []
+llfullyCross :: ILBlock -> State (Count, CNF) [LLConstraint]
+llfullyCross block@(ILBlock numTrials start end design _) = do
+  stateVars <- getNFresh (numTrials * numTrials) -- #1
+  let states = transpose $ chunkify stateVars numTrials
+  let levels = getShapedLevels block
+  let entanglements = concatMap (\(s, l) -> entangleFC s l) $ zip states levels
+  let entangleConstraints = map (\(s, l) -> Entangle s l) entanglements -- #2
+  let oneHotConstraints = map OneHot states -- #3
+  return $ oneHotConstraints ++ entangleConstraints
+
+entangleFC :: [Int] -> [[Int]] -> [(Int, [Int])]
+entangleFC states levels = zip states (sequence levels)
+
+
+
+
+-- chunks a list into chunkSize sized chunks
+chunkify :: [Int] -> Int -> [[Int]]
+chunkify [] _ = []
+chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
 
 
 trialConsistency :: ILBlock -> [LLConstraint]
-trialConsistency (ILBlock numTrials start end design _) = map (\x -> OneHot x) allLevelPairs
-  where trialSize = totalLeavesInDesign design
-        trialShape = map countLeaves design
-        levelGroups = map (\x -> getShapeVars x trialShape) [start, (trialSize+1).. end]
-        allLevelPairs = concatMap sequence levelGroups
+trialConsistency block = map OneHot allLevelPairs
+  where allLevelPairs = concatMap sequence $ getShapedLevels block
 
 getShapeVars :: Int -> [Int] -> [[Int]]
 getShapeVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
+
+getShapedLevels :: ILBlock -> [[[Int]]]
+getShapedLevels (ILBlock numTrials start end design _) = levelGroups
+  where trialSize = totalLeavesInDesign design
+        trialShape = map countLeaves design
+        levelGroups = map (\x -> getShapeVars x trialShape) [start, (trialSize+1).. end]
+
+
+
+
+
+
 
 
 ---------------
@@ -182,5 +195,8 @@ appendCNF :: CNF -> State (Count, CNF) ()
 appendCNF newEntry = do (x, accum) <- get
                         put (x, newEntry ++ accum)
                         return ()
+
+type Count = Int
+type Var = Int
 
 --}
