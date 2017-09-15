@@ -3,33 +3,44 @@ module FrontEnd
 -- for testing
 , enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
-, llfullyCross, entangleFC, chunkify, trialConsistency, getShapeVars, getShapedLevels
+, llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
-, makeBlock, hlToIl, ilToll, buildCNF, produceCNF, fullyCrossSize, runExperiment )
+, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, runExperiment )
 where
 
 import Data.List (transpose, nub)
 import DataStructures
 import Control.Monad.Trans.State
 
-
+-- At the "High Level" blocks are non-overlapping SPANS. They know how many trials they contain
+-- and what the "design" of the trial is- the design is a tree which you
+-- can use to find out things like how many levels there are and how big the trials are
+-- They also know what constraints they have applied to them at a high level
 data HLBlock = HLBlock { hlnumTrials :: Int
                        , hldesign :: Design
                        , hlconstraints :: [HLConstraint]
                        } deriving(Show, Eq)
 
+-- HLLabelTrees are just factors, and they're used to interpret trials
+--     ie [color, [red, blue]]
+-- A design is just a list of factors
 type Design = [HLLabelTree]
 data HLLabelTree = NTNode String [HLLabelTree] | LeafNode String deriving(Show, Eq)
 
+-- The "High Level" AST is just a list of blocks
+-- In the future this might also include cross-block constraints
 type HLAST = [HLBlock]
 
+-- These are closely related to the constraints that are exposed to the user
 data HLConstraint =  HLAssertEq Int [String] --TODO: the list of string rep, what does that mean?
                    | HLAssertLt Int [String]
                    | HLAssertGt Int [String]
                    | Consistency
                    | FullyCross deriving(Show, Eq)
 
--- list of IL blocks
+-------------------------
+-- The "Intermediate Level" representation just gets variables allocated
+-- Transformation time!
 type ILAST = [ILBlock]
 
 -- so a block that occupies: 0, 1, 2, 3 the startAddr is 0 & the endAddr is 3
@@ -40,72 +51,49 @@ data ILBlock = ILBlock { ilnumTrials :: Int
                       , ilconstraints :: [HLConstraint]
                       } deriving(Show, Eq)
 
-
---- Transformation time!
+-------------------------
+-- The "Low Level" representation turns constraints into actionable commands
 data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
                  | AssertGt Int [Var] | OneHot [Var]
                  | Entangle Var [Var] deriving(Show, Eq)
 
--- list of IL blocks : get the total num allocated by looking at last block
+
+-- the low level AST is just a list of "commands" to execute
 type LLAST = [LLConstraint]
 
-
-
-
-
-
--- complicatedColor = NTNode "color" [(NTNode "darkcolor" [(LeafNode "black"), (LeafNode "blue")]), (NTNode "lightcolor" [(LeafNode "blue"), (LeafNode "pink")])]
--- complicatedShape = NTNode "shape" [(LeafNode "circle"), (LeafNode "square"), (LeafNode "triangle")]
-
--- color = NTNode "color" [(LeafNode "red"), (LeafNode "blue")]
--- shape = NTNode "shape" [(LeafNode "circle"), (LeafNode "square")]
--- design = [color, shape]
--- block = makeBlock (fullyCrossSize design) [color, shape] [FullyCross]
--- ast = [block]
--- produceCNF ast
---
--- execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
--- runState (hlToIl ast >>= ilToll) emptyState
--- runState (hlToIl ast) emptyState
---
---
--- ilBlock = ILBlock {ilnumTrials = 4, ilstartAddr = 1, ilendAddr = 16, ildesign = [NTNode "color" [LeafNode "red",LeafNode "blue"],NTNode "shape" [LeafNode "circle",LeafNode "square"]], ilconstraints = [Consistency,FullyCross]}
--- numTrials = 4
--- states = transpose $ chunkify [17..32] 4
--- levels = getShapedLevels ilBlock
-
-
+-------------------------------
+-- I would have called it go!!! but bang isn't a valid identifier character
 runExperiment :: HLAST -> (Int, CNF)
 runExperiment ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 
-produceCNF :: HLAST -> CNF
-produceCNF ast = snd $ runExperiment ast
+-------------------------------
 
+-- constructor which gloms on consistency constraint to HLBlocks
 makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
 makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
 
--- tests
--- countLeaves color == 4
--- countLeaves shape == 3
--- countLeaves (LeafNode "a") == 1
+-- reports number of leaf nodes in tree
+-- ie, countLeaves (color, (ltcolor, (red, blue)), (dkcolor, (blue, blue))) == 4
 countLeaves :: HLLabelTree -> Int
 countLeaves (NTNode _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
 countLeaves (LeafNode _) = 1
 
+-- reports number of leaf nodes in full design (just a list of trees)
 totalLeavesInDesign :: Design -> Int
 totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
--- only tells you the NUMBER of TRIALS
+-- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
 fullyCrossSize :: Design -> Int
 fullyCrossSize factors = numStates
   where numStates = foldl (\acc x -> acc * countLeaves x) 1 factors
 
 
 -- Transformation time!
+-- HL -> IL is variable allocation
 hlToIl :: HLAST -> State (Int, CNF) ILAST
 hlToIl = mapM allocateVars
 
-
+-- updates the State monad to match the number of vars spanned by that block
 allocateVars :: HLBlock ->  State (Int, CNF) ILBlock
 allocateVars (HLBlock numTrials design constraints) = do
       startAddr <- getFresh
@@ -116,15 +104,13 @@ allocateVars (HLBlock numTrials design constraints) = do
 
 
 -- Transformation time!
+-- IL -> LL is (HL constraints) -> (LL commands)
 ilToll :: ILAST -> State (Count, CNF) LLAST
-ilToll ilast = do llblocks <- mapM ilBlockToLLBlocks ilast
-                  return $ concat llblocks
-
+ilToll = concatMapM ilBlockToLLBlocks
 
 ilBlockToLLBlocks :: ILBlock -> State (Count, CNF) LLAST
-ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = do
-  llblocks <- mapM (`desugarConstraint` block) constraints
-  return $ concat llblocks
+ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = concatMapM (`desugarConstraint` block) constraints
+
 
 
 -- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
@@ -147,6 +133,11 @@ llfullyCross block@(ILBlock numTrials start end design _) = do
   let oneHotConstraints = map OneHot transposedStates -- #3
   return $ oneHotConstraints ++ entangleConstraints
 
+-- matches up states and levels for binding with iff relationship
+-- ie, states = [5, 6, 7, 8]
+--     levels = [[1, 2], [3, 4]]
+-- entangleFC states newLevels =>
+-- [(5,[1,3]),(6,[1,4]),(7,[2,3]),(8,[2,4])]
 entangleFC :: [Int] -> [[Int]] -> [(Int, [Int])]
 entangleFC states levels = zip states (sequence levels)
 
@@ -156,14 +147,16 @@ chunkify :: [Int] -> Int -> [[Int]]
 chunkify [] _ = []
 chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
 
-
+-- make sure exactly 1 choice of every level is true
 trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency block = map OneHot allLevelPairs
   where allLevelPairs = concat $ getShapedLevels block
 
--- given the st
-getShapeVars :: Int -> [Int] -> [[Int]]
-getShapeVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
+-- helper for getting shaped levels
+-- given a starting index, and a list that says how many levels in each factor, returns one trial
+-- ie getTrialVars 1 [2, 2] => [[1, 2], [3, 4]]
+getTrialVars :: Int -> [Int] -> [[Int]]
+getTrialVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
 
 -- returns the level vars, nested by factor then by trial
 -- ie if the block has color=r, b & shape=c, s
@@ -173,9 +166,11 @@ getShapedLevels :: ILBlock -> [[[Int]]]
 getShapedLevels (ILBlock numTrials start end design _) = levelGroups
   where trialSize = totalLeavesInDesign design
         trialShape = map countLeaves design
-        levelGroups = map (`getShapeVars` trialShape) [start, (trialSize+1).. end]
+        levelGroups = map (`getTrialVars` trialShape) [start, (trialSize+1).. end]
+
 
 -- Transformation time!
+-- This actually runs the commands we constructed in the low level
 buildCNF :: LLAST -> State (Int, CNF) ()
 buildCNF = mapM_ buildCommand
 
@@ -193,3 +188,9 @@ enforceOneHot :: [Var] -> State (Count, CNF) ()
 enforceOneHot inList = do appendCNF [inList] -- this appends (a or b or c)
                           appendCNF $ not_pairs inList -- appends the (-a or -b) and (-b or -c) etc pairs
   where not_pairs xs = nub [[-x, -y] | x <- xs, y <- xs, x < y]
+
+
+-- why isn't this part of control.monad? No one knows
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM func args = do result <- mapM func args
+                          return $ concat result

@@ -20,7 +20,7 @@ tests :: TestTree
 tests = testGroup "Tests" [frontEndTests, dataStructureTests]
 
 frontEndTests :: TestTree
-frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, hltoilTests, iltollTests]
+frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, hlTreeTests, hltoilTests, iltollTests]
 
 dataStructureTests :: TestTree
 dataStructureTests = testGroup "DataStructure Tests" [helperTests]
@@ -43,6 +43,18 @@ oneHotTests = testGroup "one hot tests"
         @?= (6,[[-1,-2],[-1,-3],[-1,-4],[-2,-3],[-2,-4],[-3,-4],[1,2,3,4]]) -- TODO: check against cryptosatmini
   ]
 
+hlTreeTests = testGroup "verifying properties of the design trees"
+  [ testCase "countLeaves 2 leaf tree" $
+      countLeaves (NTNode "color" [LeafNode "red", LeafNode "blue"])
+        @?= 2
+  , testCase "countLeaves 3 leaf tree" $
+       countLeaves (NTNode "color" [LeafNode "red", LeafNode "blue", LeafNode "yellow"])
+         @?= 3
+   , testCase "countLeaves nested 4 leaf tree" $
+        countLeaves (NTNode "color"[NTNode "ltcolor" [LeafNode "red", LeafNode "blue"], NTNode "dkcolor" [LeafNode "red", LeafNode "blue"]])
+          @?= 4
+  ]
+
 
 hltoilTests = testGroup "hl to il variable allocation tests"
   [ testCase "running example" $
@@ -60,9 +72,20 @@ iltollTests = testGroup "il to ll low level tests"
   , testCase "fullycross constraint gen running example" $
       evalState (llfullyCross testILBlock) (initState 4)
         @?= [OneHot [5,7],OneHot [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
+  , testCase "getTrials helper test" $
+      getTrialVars 1 [2, 2]
+        @?= [[1, 2], [3, 4]]
+  , testCase "getTrials helper test different start" $
+      getTrialVars 5 [2, 2]
+        @?= [[5, 6], [7, 8]]
+  , testCase "getShapedLevels helper test running example" $
+      getShapedLevels testILBlock
+        @?= [[[1,2]],[[3,4]]]
+  , testCase "entangleFC helper test 2 factors / 2 levels" $
+      entangleFC [5, 6, 7, 8] [[1, 2], [3, 4]] -- first arg is "state" vars, second arg is "level" vars
+        @?= [(5,[1,3]),(6,[1,4]),(7,[2,3]),(8,[2,4])]
   ]
 
---ilBlockToLLBlocks
 
 testHLBlock :: HLBlock
 testHLBlock = block
