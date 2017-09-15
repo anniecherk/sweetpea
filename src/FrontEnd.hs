@@ -139,11 +139,12 @@ desugarConstraint _ inBlock = error "desugar const not implemented yet"
 llfullyCross :: ILBlock -> State (Count, CNF) [LLConstraint]
 llfullyCross block@(ILBlock numTrials start end design _) = do
   stateVars <- getNFresh (numTrials * numTrials) -- #1
-  let states = transpose $ chunkify stateVars numTrials
+  let states = chunkify stateVars numTrials
+  let transposedStates = transpose states -- transpose so that we 1-hot each of "the same" state
   let levels = getShapedLevels block
   let entanglements = concatMap (uncurry entangleFC) $ zip states levels
   let entangleConstraints = map (uncurry Entangle) entanglements -- #2
-  let oneHotConstraints = map OneHot states -- #3
+  let oneHotConstraints = map OneHot transposedStates -- #3
   return $ oneHotConstraints ++ entangleConstraints
 
 entangleFC :: [Int] -> [[Int]] -> [(Int, [Int])]

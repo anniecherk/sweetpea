@@ -20,7 +20,7 @@ tests :: TestTree
 tests = testGroup "Tests" [frontEndTests, dataStructureTests]
 
 frontEndTests :: TestTree
-frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, varAllocTests]
+frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, hltoilTests, iltollTests]
 
 dataStructureTests :: TestTree
 dataStructureTests = testGroup "DataStructure Tests" [helperTests]
@@ -44,7 +44,7 @@ oneHotTests = testGroup "one hot tests"
   ]
 
 
-varAllocTests = testGroup "hl to il variable allocation tests"
+hltoilTests = testGroup "hl to il variable allocation tests"
   [ testCase "running example" $
       evalState (allocateVars testHLBlock) emptyState
         @?= testILBlock
@@ -52,11 +52,14 @@ varAllocTests = testGroup "hl to il variable allocation tests"
 
 iltollTests = testGroup "il to ll low level tests"
   [ testCase "constraint gen running example" $
-      evalState (ilBlockToLLBlocks testILBlock) emptyState
-        @?= undefined --TODO
+      evalState (ilBlockToLLBlocks testILBlock) (initState 4)
+        @?=  [OneHot [1,2],OneHot [3,4],OneHot [5,7],OneHot [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
   , testCase "getShapedLevel running example" $
       getShapedLevels testILBlock
         @?= [[[1, 2]], [[3, 4]]]
+  , testCase "fullycross constraint gen running example" $
+      evalState (llfullyCross testILBlock) (initState 4)
+        @?= [OneHot [5,7],OneHot [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
   ]
 
 --ilBlockToLLBlocks
