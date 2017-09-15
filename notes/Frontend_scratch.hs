@@ -21,11 +21,14 @@ data HLConstraint =  HLAssertEq Int [String] --TODO: the list of string rep, wha
                   --                         } deriving(Show)
 
 makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
-makeBlock numTs des consts = (HLBlock numTs des (Consistency : consts))
+makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
 
 
--- color = NTNode "color" [(NTNode "darkcolor" [(LeafNode "black"), (LeafNode "blue")]), (NTNode "lightcolor" [(LeafNode "blue"), (LeafNode "pink")])]
--- shape = NTNode "shape" [(LeafNode "circle"), (LeafNode "square"), (LeafNode "triangle")]
+-- complicatedColor = NTNode "color" [(NTNode "darkcolor" [(LeafNode "black"), (LeafNode "blue")]), (NTNode "lightcolor" [(LeafNode "blue"), (LeafNode "pink")])]
+-- complicatedShape = NTNode "shape" [(LeafNode "circle"), (LeafNode "square"), (LeafNode "triangle")]
+
+-- color = NTNode "color" [(LeafNode "red"), (LeafNode "blue")]
+-- shape = NTNode "shape" [(LeafNode "circle"), (LeafNode "square")]
 -- design = [color, shape]
 -- block = makeBlock (hlFullyCross design) [color, shape] [FullyCross]
 -- ast = [block, block]
@@ -40,7 +43,7 @@ countLeaves (NTNode _ children) = foldl (\acc x -> acc + countLeaves x) 0 childr
 countLeaves (LeafNode _) = 1
 
 totalLeavesInDesign :: Design -> Int
-totalLeavesInDesign design = foldl (\acc x -> acc + countLeaves x) 0 design
+totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
 -- only tells you the NUMBER of TRIALS
 hlFullyCross :: Design -> Int
@@ -54,15 +57,15 @@ type Var = Int
 hlToIl :: HLAST -> ILAST
 hlToIl ast = go ast 1
   where go :: HLAST -> Int -> ILAST
-        go (curr:[]) fresh = [(allocateVars curr fresh)]
-        go (curr:rest) fresh = ilblock : (go rest newFresh)
+        go [curr] fresh = [allocateVars curr fresh]
+        go (curr:rest) fresh = ilblock : go rest newFresh
             where ilblock = allocateVars curr fresh
-                  newFresh = (ilendAddr ilblock) + 1
+                  newFresh = 1 + ilendAddr ilblock
 
 
 
 allocateVars :: HLBlock -> Int -> ILBlock
-allocateVars (HLBlock numTrials design constraints) fresh = (ILBlock numTrials startAddr endAddr design constraints)
+allocateVars (HLBlock numTrials design constraints) fresh = ILBlock numTrials startAddr endAddr design constraints
   where startAddr = fresh
         trialSize = totalLeavesInDesign design
         endAddr = fresh + (numTrials * trialSize) - 1
@@ -87,7 +90,7 @@ data ILBlock = ILBlock { ilnumTrials :: Int
 -- 3.
 data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
                   | AssertGt Int [Var] | OneHot [Var]
-                  | Entangle Var [Var]
+                  | Entangle Var [Var] deriving(Show)
 
 -- list of IL blocks : get the total num allocated by looking at last block
 type LLAST = [LLBlock]
@@ -95,6 +98,8 @@ type LLAST = [LLBlock]
 
 data LLBlock = LLBlock { llconstraints :: [LLConstraint]
                        } deriving(Show)
+
+-- concatMap sequence [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
 
 
 -- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
@@ -105,6 +110,21 @@ ilBlockToLLBlock :: ILBlock -> LLBlock
 ilBlockToLLBlock inBlock = (LLBlock [])
 
 desugarConstraint :: HLConstraint -> ILBlock -> LLBlock
-desugarConstraint Consistency inBlock = (LLBlock [])
-desugarConstraint FullyCross  inBlock = (LLBlock [])
+desugarConstraint Consistency inBlock = (LLBlock [OneHot [-1]])
+desugarConstraint FullyCross  inBlock = (LLBlock [Entangle 0 [0,0]])
 desugarConstraint _ inBlock = error "desugar const not implemented yet"
+
+trialConsistency :: ILBlock -> [LLConstraint]
+trialConsistency (ILBlock numTrials start end design _) = map (\x -> OneHot x) allLevelPairs
+  where trialSize = totalLeavesInDesign design
+        trialShape = map countLeaves design
+        levelGroups = map (\x -> getShapeVars x trialShape) [start, (trialSize+1).. end]
+        allLevelPairs = concatMap sequence levelGroups
+
+getShapeVars :: Int -> [Int] -> [[Int]]
+getShapeVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
+
+
+-- data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
+--                   | AssertGt Int [Var] | OneHot [Var]
+--                   | Entangle Var [Var] deriving(Show)
