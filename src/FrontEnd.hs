@@ -1,5 +1,10 @@
 module FrontEnd
 ( Design(..), HLAST(..), HLLabelTree(..), HLConstraint(..)
+-- for testing
+, enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
+, countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
+, llfullyCross, entangleFC, chunkify, trialConsistency, getShapeVars, getShapedLevels
+--
 , makeBlock, hlToIl, ilToll, buildCNF, produceCNF, fullyCrossSize, runExperiment )
 where
 
@@ -11,10 +16,10 @@ import Control.Monad.Trans.State
 data HLBlock = HLBlock { hlnumTrials :: Int
                        , hldesign :: Design
                        , hlconstraints :: [HLConstraint]
-                       } deriving(Show)
+                       } deriving(Show, Eq)
 
 type Design = [HLLabelTree]
-data HLLabelTree = NTNode String [HLLabelTree] | LeafNode String deriving(Show)
+data HLLabelTree = NTNode String [HLLabelTree] | LeafNode String deriving(Show, Eq)
 
 type HLAST = [HLBlock]
 
@@ -22,7 +27,7 @@ data HLConstraint =  HLAssertEq Int [String] --TODO: the list of string rep, wha
                    | HLAssertLt Int [String]
                    | HLAssertGt Int [String]
                    | Consistency
-                   | FullyCross deriving(Show)
+                   | FullyCross deriving(Show, Eq)
 
 -- list of IL blocks
 type ILAST = [ILBlock]
@@ -33,13 +38,13 @@ data ILBlock = ILBlock { ilnumTrials :: Int
                       , ilendAddr :: Int
                       , ildesign :: Design
                       , ilconstraints :: [HLConstraint]
-                      } deriving(Show)
+                      } deriving(Show, Eq)
 
 
 --- Transformation time!
 data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
                  | AssertGt Int [Var] | OneHot [Var]
-                 | Entangle Var [Var] deriving(Show)
+                 | Entangle Var [Var] deriving(Show, Eq)
 
 -- list of IL blocks : get the total num allocated by looking at last block
 type LLAST = [LLConstraint]
@@ -145,8 +150,6 @@ entangleFC :: [Int] -> [[Int]] -> [(Int, [Int])]
 entangleFC states levels = zip states (sequence levels)
 
 
-
-
 -- chunks a list into chunkSize sized chunks
 chunkify :: [Int] -> Int -> [[Int]]
 chunkify [] _ = []
@@ -155,11 +158,16 @@ chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inL
 
 trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency block = map OneHot allLevelPairs
-  where allLevelPairs = concatMap sequence $ getShapedLevels block
+  where allLevelPairs = concat $ getShapedLevels block
 
+-- given the st
 getShapeVars :: Int -> [Int] -> [[Int]]
 getShapeVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
 
+-- returns the level vars, nested by factor then by trial
+-- ie if the block has color=r, b & shape=c, s
+-- then a nesting might be
+-- [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
 getShapedLevels :: ILBlock -> [[[Int]]]
 getShapedLevels (ILBlock numTrials start end design _) = levelGroups
   where trialSize = totalLeavesInDesign design

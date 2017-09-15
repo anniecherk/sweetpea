@@ -65,4 +65,4 @@ test-suite unitTests
 
 source-repository head
   type:     git
-  location: https://github.com/githubuser/psychocnf
+  location: https://github.com/anniecherk/psychocnf

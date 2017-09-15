@@ -7,7 +7,7 @@ import Control.Monad (replicateM)
 
 
 
-import HLtoIL
+import FrontEnd
 import DataStructures
 
 
@@ -16,18 +16,17 @@ main = defaultMain tests --putStrLn "not set up"
 
 
 
-
 tests :: TestTree
-tests = testGroup "Tests" [hlToIlTests, dataStructureTests]
+tests = testGroup "Tests" [frontEndTests, dataStructureTests]
 
-hlToIlTests :: TestTree
-hlToIlTests = testGroup "HLtoIL Tests" [oneHotTests, makeTrialTests]
+frontEndTests :: TestTree
+frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, varAllocTests]
 
 dataStructureTests :: TestTree
 dataStructureTests = testGroup "DataStructure Tests" [helperTests]
 
 ---------------------------------------------------------------------------------------------------------------
--- HL to IL Tests
+-- FRONT END TESTS
 
 oneHotTests = testGroup "one hot tests"
   [ testCase "empty edgecase" $
@@ -44,17 +43,33 @@ oneHotTests = testGroup "one hot tests"
         @?= (6,[[-1,-2],[-1,-3],[-1,-4],[-2,-3],[-2,-4],[-3,-4],[1,2,3,4]]) -- TODO: check against cryptosatmini
   ]
 
-makeTrialTests = testGroup "make trials"
-  [ testCase "make 2 trials (2x2)" $
-    evalState (replicateM 2 $ makeTrial 2 2) emptyState
-      @?= [Trial {numFields = 2, fieldVars = [1,2], numStates = 2, stateVars = [3,4]},Trial {numFields = 2, fieldVars = [5,6], numStates = 2, stateVars = [7,8]}]
+
+varAllocTests = testGroup "hl to il variable allocation tests"
+  [ testCase "running example" $
+      evalState (allocateVars testHLBlock) emptyState
+        @?= testILBlock
   ]
 
-getLevelByIndexTests = testGroup "get level by index"
-  [ testCase "getting the 0th index" $
-      getLevelByIndex (evalState (replicateM 6 $ makeTrial 5 6) emptyState) 0
-        @?= [1,12,23,34,45,56]
+iltollTests = testGroup "il to ll low level tests"
+  [ testCase "constraint gen running example" $
+      evalState (ilBlockToLLBlocks testILBlock) emptyState
+        @?= undefined --TODO
+  , testCase "getShapedLevel running example" $
+      getShapedLevels testILBlock
+        @?= [[[1, 2]], [[3, 4]]]
   ]
+
+--ilBlockToLLBlocks
+
+testHLBlock :: HLBlock
+testHLBlock = block
+  where color = NTNode "color" [LeafNode "red", LeafNode "blue"]
+        design = [color]
+        block = makeBlock (fullyCrossSize design) [color] [FullyCross]
+
+
+testILBlock :: ILBlock
+testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [NTNode "color" [LeafNode "red",LeafNode "blue"]], ilconstraints = [Consistency,FullyCross]}
 
 
 
@@ -91,113 +106,3 @@ helperTests = testGroup "var/cnf utility tests"
         execState (setToZero 1) emptyState
           @?= (0,[[-1]])
   ]
-
-
----------------------------------------------------------------------------------------------------------------
--- Parser Tests
-
--- factorPathTests = testGroup "factorPathTests"
---   [ testCase "empty paths" $
---       decodeFactorPaths "[[], []]"
---         @?= Just [[], []]
---   , testCase "simplest path" $
---       decodeFactorPaths "[[\"color\",\"red\"]]"
---         @?= Just [["color", "red"]]
---   , testCase "two paths" $
---       decodeFactorPaths "[[\"color\",\"red\"], [\"color\",\"blue\"]]"
---         @?= Just [["color", "red"], ["color", "blue"]]
---   , testCase "two paths of different lengths" $
---       decodeFactorPaths "[[\"color\",\"red\"], []]"
---         @?= Just [["color", "red"], []]
---   , testCase "many paths of different lengths" $
---       decodeFactorPaths "[[\"color\",\"red\"], [\"color\",\"blue\"], \
---       \ [\"shape\",\"small\",\"circle\"], [\"shape\",\"small\", \"square\"], \
---       \ [\"shape\",\"big\",\"circle\"], [\"shape\",\"big\",\"square\"]]"
---         @?= Just [["color", "red"], ["color", "blue"], ["shape", "small", "circle"]
---         , ["shape", "small", "square"], ["shape", "big", "circle"], ["shape", "big", "square"]]
---   ]
---
--- rawConstraintsTests = testGroup "rawConstraintsTests"
---   [ testCase "NoMoreThanKInARow" $ decodeRawConstraint
---       "{ \"constraint\": \"NoMoreThanKInARow\", \
---       \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]], \
---       \  \"k\": 3}" @?= Just (NoMoreThanKInARow [["color", "lightColors", "pink"]] 3)
---   , testCase "AtLeastKInARow" $ decodeRawConstraint
---       "{ \"constraint\": \"AtLeastKInARow\", \
---       \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]], \
---       \  \"k\": 3}" @?= Just (AtLeastKInARow [["color", "lightColors", "pink"]] 3)
---   , testCase "no more than k out of j" $ decodeRawConstraint
---       "{ \"constraint\": \"NoMoreThanKOutOfJ\", \
---       \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]], \
---       \  \"k\": 3, \
---       \  \"j\": 4 }" @?= Just (NoMoreThanKOutOfJ [["color", "lightColors", "pink"]] 3 4)
---   , testCase "AtLeastKOutOfJ" $ decodeRawConstraint
---       "{ \"constraint\": \"AtLeastKOutOfJ\", \
---       \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]], \
---       \  \"k\": 3, \
---       \  \"j\": 4 }" @?= Just (AtLeastKOutOfJ [["color", "lightColors", "pink"]] 3 4)
---   , testCase "BalanceTransitions" $ decodeRawConstraint
---       "{ \"constraint\": \"BalanceTransitions\", \
---       \  \"applied_to\" : [[\"color\", \"lightColors\"]]}"
---        @?= Just (BalanceTransitions [["color", "lightColors"]])
---    , testCase "Fail missing data" $ decodeRawConstraint
---        "{ \"constraint\": \"AtLeastKOutOfJ\", \
---        \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]],}"
---        @?= Nothing
---    , testCase "Fail wrong constraint name" $ decodeRawConstraint
---        "{ \"constraint\": \"NotAConstraint\", \
---        \  \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]],}"
---        @?= Nothing
---   ]
---
---
--- fullSpecTests = testGroup "fullSpecTests"
---   [ testCase "full example" $ decodeHL_IR fullTestString
---      @?= Just (HL_IR [["color","darkColors","black"],["color","darkColors","pink"],
---        ["color","lightColors","white"],["color","lightColors","pink"],["shape","circle"],
---        ["shape","square"],["shape","triangle"]] (FullyCross [["shape"],["color"]] 2)
---        [NoMoreThanKOutOfJ [["color","lightColors","pink"]] 3 4
---        , AtLeastKOutOfJ [["shape","circle"]] 2 7,
---        NoMoreThanKInARow [["color","lightColors","pink"]] 3])
---   ]
---
---
--- fullTestString = "{ \
--- \  \"factorPaths\": [    \
--- \    [\"color\", \"darkColors\", \"black\"],    \
--- \    [\"color\", \"darkColors\", \"pink\"],    \
--- \    [\"color\", \"lightColors\", \"white\"],    \
--- \    [\"color\", \"lightColors\", \"pink\"],    \
--- \    [\"shape\", \"circle\"],    \
--- \    [\"shape\", \"square\"],    \
--- \    [\"shape\", \"triangle\"]    \
--- \  ],    \
--- \\
--- \\
--- \  \"fullyCross\": {    \
--- \    \"applied_to\" :    \
--- \      [[\"shape\"], [\"color\"]],    \
--- \    \"repetitions\" : 2    \
--- \  },    \
--- \\
--- \\
--- \  \"constraints\": [    \
--- \    {    \
--- \      \"constraint\": \"NoMoreThanKOutOfJ\",    \
--- \      \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]],    \
--- \      \"k\": 3,    \
--- \      \"j\": 4    \
--- \    },    \
--- \    {    \
--- \      \"constraint\": \"AtLeastKOutOfJ\",    \
--- \      \"applied_to\" : [[\"shape\", \"circle\"]],    \
--- \      \"k\": 2,    \
--- \      \"j\": 7    \
--- \    },    \
--- \    {    \
--- \      \"constraint\": \"NoMoreThanKInARow\",    \
--- \      \"applied_to\" : [[\"color\", \"lightColors\", \"pink\"]],    \
--- \      \"k\": 3    \
--- \    }    \
--- \  ]    \
--- \ }"
