@@ -3,7 +3,7 @@
 
 module DataStructures
 ( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..), Trial(..)
-, emptyState, initState, getFresh, getNFresh, appendCNF, zeroOut, setToOne, setToZero
+, emptyState, initState, getFresh, getNFresh, putFresh, appendCNF, zeroOut, setToOne, setToZero
 , distribute, xNorCNF, xorCNF, nAndCNF, andCNF, aDoubleImpliesList, doubleImplies, aDoubleImpliesBandC )
 where
 
@@ -25,7 +25,7 @@ data Trial = Trial { numFields :: Int -- fields are one-hot encoded levels
                    , fieldVars :: [Var]
                    , numStates :: Int -- states are for enforcing constraints to ensure fully-crossed
                    , stateVars :: [Var]
-                    } deriving (Show)
+                    } deriving (Show, Eq)
 
 
 -- Trial ::
@@ -56,6 +56,10 @@ getFresh =  do (numVars, x) <- get
 
 getNFresh :: Int -> State (Count, CNF) [Count]
 getNFresh n = replicateM n getFresh
+
+putFresh :: Int -> State (Count, CNF) ()
+putFresh n =  do (numVars, x) <- get
+                 put (n, x)
 
 
 appendCNF :: CNF -> State (Count, CNF) ()
