@@ -117,15 +117,23 @@ type LLAST = [LLBlock]
 
 -- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
 ilToll :: ILAST -> State (Count, CNF) LLAST
-ilToll = mapM ilBlockToLLBlock
+ilToll ilast = do llblocks <- mapM ilBlockToLLBlocks ilast
+                  return $ concat llblocks
 
 
-ilBlockToLLBlock :: ILBlock -> State (Count, CNF) LLBlock
-ilBlockToLLBlock inBlock = return [] --TODO
+ilBlockToLLBlocks :: ILBlock -> State (Count, CNF) [LLBlock]
+ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = mapM (\x -> desugarConstraint x block) constraints
 
-desugarConstraint :: HLConstraint -> ILBlock -> LLBlock
-desugarConstraint Consistency inBlock = trialConsistency inBlock
-desugarConstraint FullyCross  inBlock = [Entangle 0 [0,0]] --TODO
+
+-- ILBlock { ilnumTrials :: Int
+--                        , ilstartAddr :: Int
+--                        , ilendAddr :: Int
+--                        , ildesign :: Design
+--                        , ilconstraints
+
+desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) LLBlock
+desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
+desugarConstraint FullyCross  inBlock = return [Entangle 0 [0,0]] --TODO
 desugarConstraint _ inBlock = error "desugar const not implemented yet"
 
 -- 1. Generate Intermediate Vars
