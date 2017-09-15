@@ -1,3 +1,15 @@
+-- TODO omg tests
+-- type Builder = State (Int, CNF)
+
+-- hlToIl = undefined :: HLAST -> State (Int, CNF) ILAST
+-- ilToLL = undefined :: ILAST -> State (Int, CNF) LLAST
+-- buildCNF = undefined :: LLAST -> State (Int, CNF) ()
+-- execState (hlToIl undefined >>= ilToLL >>= buildCNF) emptyState -- or evalState?
+----- DELETE THESE IMPORTS!! ------------
+import Control.Monad.Trans.State
+import Control.Monad (replicateM)
+-------------------------------------------
+
 data HLBlock = HLBlock { hlnumTrials :: Int
                        , hldesign :: Design
                        , hlconstraints :: [HLConstraint]
@@ -22,6 +34,8 @@ data HLConstraint =  HLAssertEq Int [String] --TODO: the list of string rep, wha
 
 makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
 makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
+
+
 
 
 -- complicatedColor = NTNode "color" [(NTNode "darkcolor" [(LeafNode "black"), (LeafNode "blue")]), (NTNode "lightcolor" [(LeafNode "blue"), (LeafNode "pink")])]
@@ -53,22 +67,21 @@ hlFullyCross factors = numStates
 
 type Count = Int
 type Var = Int
+
 -- Transformation time!
-hlToIl :: HLAST -> ILAST
-hlToIl ast = go ast 1
-  where go :: HLAST -> Int -> ILAST
-        go [curr] fresh = [allocateVars curr fresh]
-        go (curr:rest) fresh = ilblock : go rest newFresh
-            where ilblock = allocateVars curr fresh
-                  newFresh = 1 + ilendAddr ilblock
+-- hlToIl :: HLAST -> ILAST
+hlToIl :: HLAST -> State (Int, CNF) ILAST
+hlToIl = mapM allocateVars
 
 
+allocateVars :: HLBlock ->  State (Int, CNF) ILBlock
+allocateVars (HLBlock numTrials design constraints) = do
+      startAddr <- getFresh
+      let trialSize = totalLeavesInDesign design
+      let endAddr = startAddr + (numTrials * trialSize) - 1
+      putFresh endAddr
+      return $ ILBlock numTrials startAddr endAddr design constraints
 
-allocateVars :: HLBlock -> Int -> ILBlock
-allocateVars (HLBlock numTrials design constraints) fresh = ILBlock numTrials startAddr endAddr design constraints
-  where startAddr = fresh
-        trialSize = totalLeavesInDesign design
-        endAddr = fresh + (numTrials * trialSize) - 1
 
 
 -- list of IL blocks : get the total num allocated by looking at last block
@@ -93,26 +106,34 @@ data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
                   | Entangle Var [Var] deriving(Show)
 
 -- list of IL blocks : get the total num allocated by looking at last block
+type LLBlock = [LLConstraint]
 type LLAST = [LLBlock]
 
-
-data LLBlock = LLBlock { llconstraints :: [LLConstraint]
-                       } deriving(Show)
+-- data LLBlock = LLBlock { llconstraints :: [LLConstraint]
+--                        } deriving(Show)
 
 -- concatMap sequence [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
 
 
 -- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
-ilToll :: ILAST -> LLAST
-ilToll ast = []
+ilToll :: ILAST -> State (Count, CNF) LLAST
+ilToll = mapM ilBlockToLLBlock
 
-ilBlockToLLBlock :: ILBlock -> LLBlock
-ilBlockToLLBlock inBlock = (LLBlock [])
+
+ilBlockToLLBlock :: ILBlock -> State (Count, CNF) LLBlock
+ilBlockToLLBlock inBlock = return [] --TODO
 
 desugarConstraint :: HLConstraint -> ILBlock -> LLBlock
-desugarConstraint Consistency inBlock = (LLBlock [OneHot [-1]])
-desugarConstraint FullyCross  inBlock = (LLBlock [Entangle 0 [0,0]])
+desugarConstraint Consistency inBlock = trialConsistency inBlock
+desugarConstraint FullyCross  inBlock = [Entangle 0 [0,0]] --TODO
 desugarConstraint _ inBlock = error "desugar const not implemented yet"
+
+-- 1. Generate Intermediate Vars
+-- 2. Entangle them w/ block vars
+-- 3. 1 hot the *states* ie, 1 red circle, etc
+llfullyCross :: ILBlock -> [LLConstraint]
+llfullyCross (ILBlock numTrials start end design _) = []
+
 
 trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency (ILBlock numTrials start end design _) = map (\x -> OneHot x) allLevelPairs
@@ -125,6 +146,33 @@ getShapeVars :: Int -> [Int] -> [[Int]]
 getShapeVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
 
 
--- data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
---                   | AssertGt Int [Var] | OneHot [Var]
---                   | Entangle Var [Var] deriving(Show)
+---------------
+-- COPY PASTED FOR NOW
+type CNF = [[Var]]
+emptyState :: (Count, CNF)
+emptyState = (0, [])
+
+-- if we need to start with variables 1-maxVar
+initState :: Int -> (Count, CNF)
+initState maxVar = (maxVar, [])
+
+getFresh :: State (Count, CNF) Count
+getFresh =  do (numVars, x) <- get
+               put (numVars + 1, x)
+               return (numVars+1)
+
+putFresh :: Int -> State (Count, CNF) ()
+putFresh n =  do (numVars, x) <- get
+                 put (n, x)
+
+
+getNFresh :: Int -> State (Count, CNF) [Count]
+getNFresh n = replicateM n getFresh
+
+
+appendCNF :: CNF -> State (Count, CNF) ()
+appendCNF newEntry = do (x, accum) <- get
+                        put (x, newEntry ++ accum)
+                        return ()
+
+--}
