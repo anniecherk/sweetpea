@@ -13,6 +13,7 @@ import DataStructures
 import Control.Monad.Trans.State
 import Text.Read (readMaybe)
 import Control.Monad
+import StatefulCompiler
 
 -- At the "High Level" blocks are non-overlapping SPANS. They know how many trials they contain
 -- and what the "design" of the trial is- the design is a tree which you
@@ -78,8 +79,8 @@ countLeaves (LeafNode _) = 1
 totalLeavesInDesign :: Design -> Int
 totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
--- leafNamesInDesign design
--- ["color: red", "color: blue", "shape: circle", "shape: square"]
+-- flattened version:
+-- ["color red", "color blue", "shape circle", "shape square"]
 leafNamesInDesignFlat :: Design -> [String]
 leafNamesInDesignFlat design = map unwords $ leafNamesInDesign design
 
@@ -93,12 +94,21 @@ getLeafNames :: HLLabelTree -> [[String]]
 getLeafNames (NTNode name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
 getLeafNames (LeafNode name) = [[name]]
 
+-- returns the index of a name
+-- ie, if the design is ["color", ["red", "blue"]], ["shape" ["circle", "square"]]
+-- then the queries / responses are:
+-- ["color, red"]    => 0
+-- ["color, blue"]   => 1
+-- ["shape, circle"] => 2
+-- ["shape, square"] => 3
 indexOfLevel :: [String] -> Design -> Int
 indexOfLevel target design = case result of
                                 Just value -> snd value
                                 Nothing    -> error "That isn't a valid level!"
     where result = find (\x-> fst x == target) $ zip (leafNamesInDesign design) [0..]
 
+-- returns the indices of all variables that match a particular level
+-- ie ["color", "red"] in the testExample is [1,5,9,13]
 getVarsByName :: [String] -> ILBlock -> [Int]
 getVarsByName target (ILBlock _ start end design _) = map (!! indexOfLevel target design) allVars
   where allVars = chunkify [start..end] (totalLeavesInDesign design)
@@ -148,14 +158,18 @@ countInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
 countInRange k range level inBlock = []
 
 noMoreThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
-noMoreThanInRange k range level inBlock = []
+noMoreThanInRange k range level inBlock = map (AssertLt k) levels
+  where levels = levelsInRange k range level inBlock
 
 noFewerThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
 noFewerThanInRange k range level inBlock = []
 
 -- helper function for the above 3 which makes the lists they act on
-levelsInRange :: Int -> Int -> [String] -> ILBlock -> [Int]
-levelsInRange k range level inBlock = []
+levelsInRange :: Int -> Int -> [String] -> ILBlock -> [[Int]]
+levelsInRange k range level inBlock = slidingWindow range allVarsForLevel
+  where allVarsForLevel = getVarsByName level inBlock
+
+
 
 
 
@@ -212,6 +226,7 @@ buildCNF = mapM_ buildCommand
 buildCommand :: LLConstraint -> State (Int, CNF) ()
 buildCommand (OneHot todo) = enforceOneHot todo
 buildCommand (Entangle state levels) = aDoubleImpliesList state levels
+buildCommand (AssertLt k vars) = kLessThanN k vars
 buildCommand _ = error "other commands not implemented"
 
 -------------------------------------------------------------
@@ -254,3 +269,10 @@ concatMapM func args = do result <- mapM func args
 chunkify :: [a] -> Int -> [[a]]
 chunkify [] _ = []
 chunkify inList chunkSize = take chunkSize inList : chunkify (drop chunkSize inList) chunkSize
+
+-- slidingWindow 3 [1..6] => [[1,2,3],[2,3,4],[3,4,5],[4,5,6]]
+slidingWindow :: Int -> [a] -> [[a]]
+slidingWindow wsize todo
+  | length todo  < wsize = error "Tried to take a sliding window that was too big"
+  | length todo == wsize = [todo]
+  | otherwise = take wsize todo : slidingWindow wsize (tail todo)
