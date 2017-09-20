@@ -8,7 +8,7 @@ module FrontEnd
 , makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, runExperiment, decode )
 where
 
-import Data.List (transpose, nub)
+import Data.List (transpose, nub, find)
 import DataStructures
 import Control.Monad.Trans.State
 import Text.Read (readMaybe)
@@ -34,9 +34,8 @@ data HLLabelTree = NTNode String [HLLabelTree] | LeafNode String deriving(Show, 
 type HLAST = [HLBlock]
 
 -- These are closely related to the constraints that are exposed to the user
-data HLConstraint =  HLAssertEq Int [String] --TODO: the list of string rep, what does that mean?
-                   | HLAssertLt Int [String]
-                   | HLAssertGt Int [String]
+data HLConstraint =  NoMoreInARow Int [String]
+                --   | NoMoreThanKeveryJ Int Int [String]
                    | Consistency
                    | FullyCross deriving(Show, Eq)
 
@@ -56,8 +55,8 @@ data ILBlock = ILBlock { ilnumTrials :: Int
 -------------------------
 -- The "Low Level" representation turns constraints into actionable commands
 data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
-                 | AssertGt Int [Var] | OneHot [Var]
-                 | Entangle Var [Var] deriving(Show, Eq)
+                  | AssertGt Int [Var] | OneHot [Var]
+                  | Entangle Var [Var] deriving(Show, Eq)
 
 
 -- the low level AST is just a list of "commands" to execute
@@ -80,13 +79,29 @@ totalLeavesInDesign :: Design -> Int
 totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
 -- leafNamesInDesign design
--- ["red","blue","circle","square"]
-leafNamesInDesign :: Design -> [String]
+-- ["color: red", "color: blue", "shape: circle", "shape: square"]
+leafNamesInDesignFlat :: Design -> [String]
+leafNamesInDesignFlat design = map unwords $ leafNamesInDesign design
+
+
+-- leafNamesInDesign design
+-- [["color", "red"],["color", "blue"],["shape", "circle"],["shape", "square"]]
+leafNamesInDesign :: Design -> [[String]]
 leafNamesInDesign = concatMap getLeafNames
 
-getLeafNames :: HLLabelTree -> [String]
-getLeafNames (NTNode _ children) = foldl (\acc x -> acc ++ getLeafNames x) [] children
-getLeafNames (LeafNode name) = [name]
+getLeafNames :: HLLabelTree -> [[String]]
+getLeafNames (NTNode name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
+getLeafNames (LeafNode name) = [[name]]
+
+indexOfLevel :: [String] -> Design -> Int
+indexOfLevel target design = case result of
+                                Just value -> snd value
+                                Nothing    -> error "That isn't a valid level!"
+    where result = find (\x-> fst x == target) $ zip (leafNamesInDesign design) [0..]
+
+getVarsByName :: [String] -> ILBlock -> [Int]
+getVarsByName target (ILBlock _ start end design _) = map (!! indexOfLevel target design) allVars
+  where allVars = chunkify [start..end] (totalLeavesInDesign design)
 -------------------------------------------------------------
 
 -- constructor which gloms on consistency constraint to HLBlocks
@@ -126,7 +141,23 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = concatMapM (`desugarCons
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
+desugarConstraint (NoMoreInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
 desugarConstraint _ inBlock = error "desugar const not implemented yet"
+
+countInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
+countInRange k range level inBlock = []
+
+noMoreThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
+noMoreThanInRange k range level inBlock = []
+
+noFewerThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
+noFewerThanInRange k range level inBlock = []
+
+-- helper function for the above 3 which makes the lists they act on
+levelsInRange :: Int -> Int -> [String] -> ILBlock -> [Int]
+levelsInRange k range level inBlock = []
+
+
 
 -- 1. Generate Intermediate Vars
 -- 2. Entangle them w/ block vars
@@ -198,7 +229,7 @@ decode result design
 label :: [Int] -> Design -> String
 label inList design = unlines $ map unwords $ chunkify selectedVarNames (length design)
   where relevantVars = take (totalLeavesInDesign design * fullyCrossSize design) inList --HACK: actually need probably the AST instead of design
-        names = take (length relevantVars) (cycle $ leafNamesInDesign design)
+        names = take (length relevantVars) (cycle $ leafNamesInDesignFlat design)
         varOn = map (> 0) relevantVars
         selectedVarNames = map snd $ filter fst $ zip varOn names
 -------------------------------------------------------------
