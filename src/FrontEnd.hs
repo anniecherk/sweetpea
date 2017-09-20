@@ -35,8 +35,12 @@ data HLLabelTree = NTNode String [HLLabelTree] | LeafNode String deriving(Show, 
 type HLAST = [HLBlock]
 
 -- These are closely related to the constraints that are exposed to the user
-data HLConstraint =  NoMoreInARow Int [String]
-                --   | NoMoreThanKeveryJ Int Int [String]
+data HLConstraint =  NoMoreThanKInARow Int [String]
+                   | NoMoreThanKeveryJ Int Int [String]
+                   | AtLeastKInARow Int [String]
+                   | AtLeastKeveryJ Int Int [String]
+                   | ExactlyKInARow Int [String]
+                   | ExactlyKeveryJ Int Int [String]
                    | Consistency
                    | FullyCross deriving(Show, Eq)
 
@@ -151,18 +155,32 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = concatMapM (`desugarCons
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
-desugarConstraint (NoMoreInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
+desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
+desugarConstraint (NoMoreThanKeveryJ k j level) inBlock = return $ noMoreThanInRange k j level inBlock
+desugarConstraint (AtLeastKInARow k level) inBlock = return $ noFewerThanInRange k k level inBlock
+desugarConstraint (AtLeastKeveryJ k j level) inBlock = return $ noFewerThanInRange k j level inBlock
+desugarConstraint (ExactlyKInARow k level) inBlock = return $ exactlyInRange k k level inBlock
+desugarConstraint (ExactlyKeveryJ k j level) inBlock = return $ exactlyInRange k j level inBlock
 desugarConstraint _ inBlock = error "desugar const not implemented yet"
 
-countInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
-countInRange k range level inBlock = []
 
-noMoreThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
-noMoreThanInRange k range level inBlock = map (AssertLt k) levels
+exactlyInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
+exactlyInRange k range level inBlock = map (AssertEq k) levels
   where levels = levelsInRange k range level inBlock
 
+-- no more than 2 in a row, means lt 3 in a row
+-- "nomore" is lteq
+noMoreThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
+noMoreThanInRange k range level inBlock = map (AssertLt (k+1)) levels
+  where levels = levelsInRange k range level inBlock
+
+-- no fewer than 2 in a row, means 2+ in a row
+-- "nofewer" is gteq
 noFewerThanInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
-noFewerThanInRange k range level inBlock = []
+noFewerThanInRange k range level inBlock = map (AssertGt (k-1)) levels
+  where levels = levelsInRange k range level inBlock
+
+-- TODO: error checking on bounds of lt/eq/gt
 
 -- helper function for the above 3 which makes the lists they act on
 levelsInRange :: Int -> Int -> [String] -> ILBlock -> [[Int]]
