@@ -2,6 +2,7 @@ module FrontEnd
 ( Design(..), HLAST(..), HLLabelTree(..), HLConstraint(..)
 -- for testing
 , enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
+, HLSet(..)
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
@@ -14,6 +15,8 @@ import Control.Monad.Trans.State
 import Text.Read (readMaybe)
 import Control.Monad
 import StatefulCompiler
+
+
 
 -- At the "High Level" blocks are non-overlapping SPANS. They know how many trials they contain
 -- and what the "design" of the trial is- the design is a tree which you
@@ -43,6 +46,9 @@ data HLConstraint =  NoMoreThanKInARow Int [String]
                    | ExactlyKeveryJ Int Int [String]
                    | Consistency
                    | FullyCross deriving(Show, Eq)
+
+-- These are for applying constraints to sets
+data HLSet = Level [String] | SampleWithReplacement [[String]] | SampleWithOutReplacement [[String]]
 
 -------------------------
 -- The "Intermediate Level" representation just gets variables allocated
@@ -245,6 +251,8 @@ buildCommand :: LLConstraint -> State (Int, CNF) ()
 buildCommand (OneHot todo) = enforceOneHot todo
 buildCommand (Entangle state levels) = aDoubleImpliesList state levels
 buildCommand (AssertLt k vars) = kLessThanN k vars
+buildCommand (AssertGt k vars) = kGreaterThanN k vars
+buildCommand (AssertEq k vars) = assertKofN k vars
 buildCommand _ = error "other commands not implemented"
 
 -------------------------------------------------------------
