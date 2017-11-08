@@ -1,20 +1,6 @@
-Psyscript is a sequence processing language; it is a solver aided DSL.
+SweetPea is a SAT-sampler aided language that addresses problems scientists face when creating randomized experimental designs. 
 
-It isn't done!
-
-This is a project that takes high-level constraints, translates them into DIMACS CNF (using a Tseytin transformation!) to feed through a SAT solver, and then translates the results back into something intelligible at a high-level. 
-
-
-Here's what works so far:
-
-- Generating valid DIMACS CNF files which produce correct (exhaustively tested) constraints for multibit adders.
-- The popcount algorithm, which generates a DIMACS CNF file to represent "k of N" bits are set. (Also tested exhaustively!)
-
-Here's a high-level todo list:
-
-- Generating constraints for "k < N" bits are set.
-- Handling encodings for data which at a high-level is not binary; in practice this is categorical data with >2 categories.
-- Explicit support for more types of constraints.
+An experimental design is a description of experimental factors and how to map those factors onto a sequence of trials such that researchers can draw statistically valid conclusions. We have built a prototype that is targeted at psychology and neuroscience experiments. SweetPea provides a high-level interface to declaratively describe an experimental design, and a low-level synthesizer to generate unbiased sequences of trials given satisfiable constraints. SweetPea samples sequences of trials by compiling experimental designs into Boolean logic, which are then passed to a SAT-sampler. The SAT-sampler Unigen provides statistical guarantees that the solutions it finds are approximately uniformly probable in the space of all valid solutions. This means that while producing sequences of trials that are perfectly unbiased is intractable, we do the next best thing-- produce sequences that are approximately unbiased.
 
 
 ## Useage info!
