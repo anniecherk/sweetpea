@@ -45,13 +45,13 @@ oneHotTests = testGroup "one hot tests"
 
 hlTreeTests = testGroup "verifying properties of the design trees"
   [ testCase "countLeaves 2 leaf tree" $
-      countLeaves (NTNode "color" [LeafNode "red", LeafNode "blue"])
+      countLeaves (Factor "color" [Level "red", Level "blue"])
         @?= 2
   , testCase "countLeaves 3 leaf tree" $
-       countLeaves (NTNode "color" [LeafNode "red", LeafNode "blue", LeafNode "yellow"])
+       countLeaves (Factor "color" [Level "red", Level "blue", Level "yellow"])
          @?= 3
    , testCase "countLeaves nested 4 leaf tree" $
-        countLeaves (NTNode "color"[NTNode "ltcolor" [LeafNode "red", LeafNode "blue"], NTNode "dkcolor" [LeafNode "red", LeafNode "blue"]])
+        countLeaves (Factor "color"[Factor "ltcolor" [Level "red", Level "blue"], Factor "dkcolor" [Level "red", Level "blue"]])
           @?= 4
   ]
 
@@ -89,13 +89,13 @@ iltollTests = testGroup "il to ll low level tests"
 
 testHLBlock :: HLBlock
 testHLBlock = block
-  where color = NTNode "color" [LeafNode "red", LeafNode "blue"]
+  where color = Factor "color" [Level "red", Level "blue"]
         design = [color]
         block = makeBlock (fullyCrossSize design) [color] [FullyCross]
 
 
 testILBlock :: ILBlock
-testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [NTNode "color" [LeafNode "red",LeafNode "blue"]], ilconstraints = [Consistency,FullyCross]}
+testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [Factor "color" [Level "red",Level "blue"]], ilconstraints = [Consistency,FullyCross]}
 
 
 
