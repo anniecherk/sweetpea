@@ -2,11 +2,11 @@ module FrontEnd
 ( Design(..), HLAST(..), HLLabelTree(..), HLConstraint(..)
 -- for testing
 , enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
-, HLSet(..)
+-- , HLSet(..)
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
-, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, runExperiment, decode )
+, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, multiFullyCrossSize, synthesizeTrials, decode )
 where
 
 import Data.List (transpose, nub, find)
@@ -31,24 +31,26 @@ data HLBlock = HLBlock { hlnumTrials :: Int
 --     ie [color, [red, blue]]
 -- A design is just a list of factors
 type Design = [HLLabelTree]
-data HLLabelTree = NTNode String [HLLabelTree] | LeafNode String deriving(Show, Eq)
+data HLLabelTree = Factor String [HLLabelTree] | Level String deriving(Show, Eq)
 
 -- The "High Level" AST is just a list of blocks
 -- In the future this might also include cross-block constraints
 type HLAST = [HLBlock]
 
 -- These are closely related to the constraints that are exposed to the user
-data HLConstraint =  NoMoreThanKInARow Int [String]
-                   | NoMoreThanKeveryJ Int Int [String]
-                   | AtLeastKInARow Int [String]
-                   | AtLeastKeveryJ Int Int [String]
-                   | ExactlyKInARow Int [String]
-                   | ExactlyKeveryJ Int Int [String]
+data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
+                   | NoMoreThanKeveryJ Int Int [String]  --HLSet
+                   | AtLeastKInARow Int [String]  --HLSet
+                   | AtLeastKeveryJ Int Int [String]  --HLSet
+                   | ExactlyKInARow Int [String]  --HLSet
+                   | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Consistency
-                   | FullyCross deriving(Show, Eq)
+                   | FullyCross  deriving(Show, Eq)
+-- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
+-- we can rederive # reps by looking at numTrials & the design
 
 -- These are for applying constraints to sets
-data HLSet = Level [String] | SampleWithReplacement [[String]] | SampleWithOutReplacement [[String]]
+-- data HLSet = Level [String] | SampleWithReplacement [[String]] | SampleWithOutReplacement [[String]] deriving(Show, Eq)
 
 -------------------------
 -- The "Intermediate Level" representation just gets variables allocated
@@ -75,15 +77,15 @@ type LLAST = [LLConstraint]
 
 -------------------------------------------------------------
 -- I would have called it go!!! but bang isn't a valid identifier character
-runExperiment :: HLAST -> (Int, CNF)
-runExperiment ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
+synthesizeTrials :: HLAST -> (Int, CNF)
+synthesizeTrials ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 
 -------------------------------------------------------------
 -- reports number of leaf nodes in tree
 -- ie, countLeaves (color, (ltcolor, (red, blue)), (dkcolor, (blue, blue))) == 4
 countLeaves :: HLLabelTree -> Int
-countLeaves (NTNode _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
-countLeaves (LeafNode _) = 1
+countLeaves (Factor _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
+countLeaves (Level _) = 1
 
 -- reports number of leaf nodes in full design (just a list of trees)
 totalLeavesInDesign :: Design -> Int
@@ -94,6 +96,7 @@ totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 leafNamesInDesignFlat :: Design -> [String]
 leafNamesInDesignFlat design = map unwords $ leafNamesInDesign design
 
+--
 
 -- leafNamesInDesign design
 -- [["color", "red"],["color", "blue"],["shape", "circle"],["shape", "square"]]
@@ -101,8 +104,8 @@ leafNamesInDesign :: Design -> [[String]]
 leafNamesInDesign = concatMap getLeafNames
 
 getLeafNames :: HLLabelTree -> [[String]]
-getLeafNames (NTNode name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
-getLeafNames (LeafNode name) = [[name]]
+getLeafNames (Factor name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
+getLeafNames (Level name) = [[name]]
 
 -- returns the index of a name
 -- ie, if the design is ["color", ["red", "blue"]], ["shape" ["circle", "square"]]
@@ -132,6 +135,12 @@ makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
 fullyCrossSize :: Design -> Int
 fullyCrossSize factors = numStates
   where numStates = foldl (\acc x -> acc * countLeaves x) 1 factors
+
+-- HACK
+-- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
+multiFullyCrossSize :: Design -> Int -> Int
+multiFullyCrossSize factors rep = rep * fullyCrossSize factors
+
 -------------------------------------------------------------
 
 -- Transformation time!
@@ -202,13 +211,16 @@ levelsInRange k range level inBlock = slidingWindow range allVarsForLevel
 -- 3. 1 hot the *states* ie, 1 red circle, etc
 llfullyCross :: ILBlock -> State (Count, CNF) [LLConstraint]
 llfullyCross block@(ILBlock numTrials start end design _) = do
-  stateVars <- getNFresh (numTrials * numTrials) -- #1
-  let states = chunkify stateVars numTrials
+  let numStates = fullyCrossSize design -- added for multiFullyCross; for single fullycross numStates = numTrials
+  let numReps = div numTrials numStates -- reversing how many reps were in MultiFullyCross; for single fullycross numReps = 1
+  stateVars <- getNFresh (numTrials * numStates) -- #1
+  let states = chunkify stateVars numStates
   let transposedStates = transpose states -- transpose so that we 1-hot each of "the same" state
   let levels = getShapedLevels block
   let entanglements = concatMap (uncurry entangleFC) $ zip states levels
   let entangleConstraints = map (uncurry Entangle) entanglements -- #2
-  let oneHotConstraints = map OneHot transposedStates -- #3
+--  let oneHotConstraints = map OneHot transposedStates -- #3
+  let oneHotConstraints = map (AssertEq numReps) transposedStates -- #3
   return $ oneHotConstraints ++ entangleConstraints
 
 -- matches up states and levels for binding with iff relationship

@@ -9,17 +9,16 @@ import DataStructures
 main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
   where
-    color = NTNode "color" [LeafNode "red", LeafNode "blue"]
-    shape = NTNode "shape" [LeafNode "circle", LeafNode "square"]
-    design = [color, shape]
-    -- numTrials = fullyCrossSize design -- function to gen fully crossed block: hide this inside
-    -- constraints = [FullyCross]        -- function to write multifullycroseed block
-    -- block = makeBlock numTrials design constraints
 
-    constraints = [AtLeastKeveryJ 1 4 ["color", "red"]]
-    block = fullyCrossedBlock design constraints
-    ast = [block]
-    (nVars, cnf) = runExperiment ast
+    color = Factor "color" [Level "red",    Level "blue"]
+    shape = Factor "shape" [Level "circle", Level "square"]
+
+
+    design       = [color, shape]
+    block        = multiFullyCrossedBlock 4 design [] -- constraints
+    experiment   = [block]
+    (nVars, cnf) = synthesizeTrials experiment
+
 
 
 -- transitions
