@@ -176,7 +176,7 @@ desugarConstraint (AtLeastKInARow k level) inBlock = return $ noFewerThanInRange
 desugarConstraint (AtLeastKeveryJ k j level) inBlock = return $ noFewerThanInRange k j level inBlock
 desugarConstraint (ExactlyKInARow k level) inBlock = return $ exactlyInRange k k level inBlock
 desugarConstraint (ExactlyKeveryJ k j level) inBlock = return $ exactlyInRange k j level inBlock
-desugarConstraint _ inBlock = error "desugar const not implemented yet"
+-- desugarConstraint _ inBlock = error "desugar const not implemented yet"
 
 
 exactlyInRange :: Int -> Int -> [String] -> ILBlock -> [LLConstraint]
@@ -265,7 +265,7 @@ buildCommand (Entangle state levels) = aDoubleImpliesList state levels
 buildCommand (AssertLt k vars) = kLessThanN k vars
 buildCommand (AssertGt k vars) = kGreaterThanN k vars
 buildCommand (AssertEq k vars) = assertKofN k vars
-buildCommand _ = error "other commands not implemented"
+-- buildCommand _ = error "other commands not implemented"
 
 -------------------------------------------------------------
 -- Decoding it back:
