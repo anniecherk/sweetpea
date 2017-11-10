@@ -31,11 +31,13 @@ data HLBlock = HLBlock { hlnumTrials :: Int
 --     ie [color, [red, blue]]
 -- A design is just a list of factors
 type Design = [HLLabelTree]
-data HLLabelTree = Factor String [HLLabelTree] | Level String deriving(Show, Eq)
+data HLLabelTree = Factor String [HLLabelTree] | Level String | Transition HLLabelTree deriving(Show, Eq)
 
 -- The "High Level" AST is just a list of blocks
 -- In the future this might also include cross-block constraints
 type HLAST = [HLBlock]
+
+
 
 -- These are closely related to the constraints that are exposed to the user
 data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
@@ -44,6 +46,7 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | AtLeastKeveryJ Int Int [String]  --HLSet
                    | ExactlyKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
+                   | Balance HLLabelTree
                    | Consistency
                    | FullyCross  deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
@@ -86,6 +89,7 @@ synthesizeTrials ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 countLeaves :: HLLabelTree -> Int
 countLeaves (Factor _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
 countLeaves (Level _) = 1
+countLeaves (Transition factor) = undefined --idk...
 
 -- reports number of leaf nodes in full design (just a list of trees)
 totalLeavesInDesign :: Design -> Int
@@ -106,6 +110,7 @@ leafNamesInDesign = concatMap getLeafNames
 getLeafNames :: HLLabelTree -> [[String]]
 getLeafNames (Factor name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
 getLeafNames (Level name) = [[name]]
+getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
 
 -- returns the index of a name
 -- ie, if the design is ["color", ["red", "blue"]], ["shape" ["circle", "square"]]
@@ -166,7 +171,7 @@ ilToll = concatMapM ilBlockToLLBlocks
 ilBlockToLLBlocks :: ILBlock -> State (Count, CNF) LLAST
 ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = concatMapM (`desugarConstraint` block) constraints
 
--- TODO: desugar the other constraints from HLConstraints to LLConstraints using Design
+
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
@@ -176,6 +181,7 @@ desugarConstraint (AtLeastKInARow k level) inBlock = return $ noFewerThanInRange
 desugarConstraint (AtLeastKeveryJ k j level) inBlock = return $ noFewerThanInRange k j level inBlock
 desugarConstraint (ExactlyKInARow k level) inBlock = return $ exactlyInRange k k level inBlock
 desugarConstraint (ExactlyKeveryJ k j level) inBlock = return $ exactlyInRange k j level inBlock
+desugarConstraint (Balance factor) inBlock = undefined --TODO clearly
 -- desugarConstraint _ inBlock = error "desugar const not implemented yet"
 
 
