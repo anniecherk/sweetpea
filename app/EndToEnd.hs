@@ -12,13 +12,15 @@ main = putStrLn (showDIMACS cnf nVars)
 
     color = Factor "color" [Level "red",    Level "blue"]
     shape = Factor "shape" [Level "circle", Level "square"]
+    size  = Factor "size"  [Level "small",  Level "big"]
 
-    colorTransitions = Transition color
+    -- colorTransitions = Transition color
 
-    constraints  = [Balance colorTransitions]
+    -- constraints  = [Balance colorTransitions]
 
-    design       = [color, shape]
-    block        = multiFullyCrossedBlock 4 design constraints
+    design       = [color, shape, size]
+    crossing     = design `remove` [size] --NOTE to self: assumes crossing is in the same ORDER as design
+    block        = fullyCrossedBlock design crossing [] -- constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment
 
