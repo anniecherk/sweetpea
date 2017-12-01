@@ -24,6 +24,7 @@ import StatefulCompiler
 -- They also know what constraints they have applied to them at a high level
 data HLBlock = HLBlock { hlnumTrials :: Int
                        , hldesign :: Design
+                       , crossing :: Design -- crossing will either be == hldesign or a subset ordered in the same way
                        , hlconstraints :: [HLConstraint]
                        } deriving(Show, Eq)
 
@@ -65,6 +66,7 @@ data ILBlock = ILBlock { ilnumTrials :: Int
                       , ilstartAddr :: Int
                       , ilendAddr :: Int
                       , ildesign :: Design
+                      , ilcrossing :: Design
                       , ilconstraints :: [HLConstraint]
                       } deriving(Show, Eq)
 
@@ -128,13 +130,13 @@ indexOfLevel target design = case result of
 -- returns the indices of all variables that match a particular level
 -- ie ["color", "red"] in the testExample is [1,5,9,13]
 getVarsByName :: [String] -> ILBlock -> [Int]
-getVarsByName target (ILBlock _ start end design _) = map (!! indexOfLevel target design) allVars
+getVarsByName target (ILBlock _ start end design cross _) = map (!! indexOfLevel target design) allVars
   where allVars = chunkify [start..end] (totalLeavesInDesign design)
 -------------------------------------------------------------
 
 -- constructor which gloms on consistency constraint to HLBlocks
-makeBlock :: Int -> Design -> [HLConstraint] -> HLBlock
-makeBlock numTs des consts = HLBlock numTs des (Consistency : consts)
+makeBlock :: Int -> Design -> Design -> [HLConstraint] -> HLBlock
+makeBlock numTs des cross consts = HLBlock numTs des cross (Consistency : consts)
 
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
 fullyCrossSize :: Design -> Int
@@ -155,12 +157,12 @@ hlToIl = mapM allocateVars
 
 -- updates the State monad to match the number of vars spanned by that block
 allocateVars :: HLBlock ->  State (Int, CNF) ILBlock
-allocateVars (HLBlock numTrials design constraints) = do
+allocateVars (HLBlock numTrials design crossing constraints) = do
       startAddr <- getFresh
       let trialSize = totalLeavesInDesign design
       let endAddr = startAddr + (numTrials * trialSize) - 1
       putFresh endAddr
-      return $ ILBlock numTrials startAddr endAddr design constraints
+      return $ ILBlock numTrials startAddr endAddr design crossing constraints
 
 -------------------------------------------------------------
 -- Transformation time!
@@ -169,7 +171,7 @@ ilToll :: ILAST -> State (Count, CNF) LLAST
 ilToll = concatMapM ilBlockToLLBlocks
 
 ilBlockToLLBlocks :: ILBlock -> State (Count, CNF) LLAST
-ilBlockToLLBlocks block@(ILBlock _ _ _ _ constraints) = concatMapM (`desugarConstraint` block) constraints
+ilBlockToLLBlocks block@(ILBlock _ _ _ _ _ constraints) = concatMapM (`desugarConstraint` block) constraints
 
 
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
@@ -216,7 +218,7 @@ levelsInRange k range level inBlock = slidingWindow range allVarsForLevel
 -- 2. Entangle them w/ block vars
 -- 3. 1 hot the *states* ie, 1 red circle, etc
 llfullyCross :: Design -> ILBlock -> State (Count, CNF) [LLConstraint]
-llfullyCross crossedDesign block@(ILBlock numTrials start end _ _) = do
+llfullyCross crossedDesign block@(ILBlock numTrials start end _ _ _) = do
   let numStates = fullyCrossSize crossedDesign -- added for multiFullyCross; for single fullycross numStates = numTrials
   let numReps = div numTrials numStates -- reversing how many reps were in MultiFullyCross; for single fullycross numReps = 1
   stateVars <- getNFresh (numTrials * numStates) -- #1
@@ -254,7 +256,7 @@ getTrialVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+
 -- then a nesting might be
 -- [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
 getShapedLevels :: ILBlock -> [[[Int]]]
-getShapedLevels (ILBlock numTrials start end design _) = levelGroups
+getShapedLevels (ILBlock numTrials start end design crossing _) = levelGroups
   where trialSize = totalLeavesInDesign design
         trialShape = map countLeaves design
         levelGroups = map (`getTrialVars` trialShape) [start, (trialSize+1).. end]
@@ -263,7 +265,7 @@ getShapedLevels (ILBlock numTrials start end design _) = levelGroups
 
 -- A modified version that uses only the subset that's crossed
 getShapedCrossedLevels :: Design -> ILBlock -> [[[Int]]]
-getShapedCrossedLevels crossedDesign (ILBlock numTrials start end _ _) = levelGroups
+getShapedCrossedLevels crossedDesign (ILBlock numTrials start end _ _ _) = levelGroups
   where trialSize = totalLeavesInDesign crossedDesign
         trialShape = map countLeaves crossedDesign
         -- TODO: THIS IS WRONG

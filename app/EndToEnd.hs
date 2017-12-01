@@ -19,7 +19,7 @@ main = putStrLn (showDIMACS cnf nVars)
     -- constraints  = [Balance colorTransitions]
 
     design       = [color, shape, size]
-    crossing     = design `remove` [size] --NOTE to self: assumes crossing is in the same ORDER as design
+    crossing     = design `remove` [shape] --NOTE to self: assumes crossing is in the same ORDER as design
     block        = fullyCrossedBlock design crossing [] -- constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment

@@ -10,9 +10,9 @@ import Data.List ((\\))
 
 -- TODO CANT HANDLE CROSSING /= DESIGN!!
 fullyCrossedBlock :: Design -> Design -> [HLConstraint] -> HLBlock
-fullyCrossedBlock design crossing constraints = makeBlock numTrials design allConstraints
+fullyCrossedBlock design crossing constraints = makeBlock numTrials design crossing allConstraints
   where numTrials      = fullyCrossSize crossing
-        allConstraints = (FullyCross crossing) : constraints        
+        allConstraints = (FullyCross crossing) : constraints
 
 -- -- TODO CANT HANDLE CROSSING /= DESIGN!!
 -- multiFullyCrossedBlock :: Int -> Design -> [HLConstraint] -> HLBlock
