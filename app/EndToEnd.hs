@@ -10,23 +10,32 @@ main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
   where
 
-    color = Factor "color" [Level "red",    Level "blue"]
-    shape = Factor "shape" [Level "circle", Level "square"]
-    size  = Factor "size"  [Level "small",  Level "big"]
+    color = Factor "color" [Level "red", Level "blue"]
+    text  = Factor "text"  [Level "red", Level "blue"]
 
-    -- colorTransitions = Transition color
+    conLevel  = DerivedLevel  "con" (Equal [color, text])
+    incLevel  = DerivedLevel  "inc" (NotEq [color, text])
+    conFactor = Factor "congruent?"  [conLevel, incLevel]
 
-    -- constraints  = [Balance colorTransitions]
+    k = 1
+    constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
 
-    design       = [color, shape, size]
-    crossing     = [0, 1, 2] --NOTE to self: assumes crossing is in the same ORDER as design
-    block        = fullyCrossedBlock design crossing [] -- constraints
+    design       = [color, text, conFactor]
+    crossing     = [0, 1]
+    block        = fullyCrossedBlock design crossing constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment
 
 
 
+    -- color = Factor "color" [Level "red", Level "blue", Level "green"]
+    -- shape = Factor "shape" [Level "circle", Level "square"]
+    -- size  = Factor "size"  [Level "small",  Level "big"]
+
+
 -- transitions
+-- colorTransitions = Transition color
+-- constraints  = [Balance colorTransitions]
 
 -- # block combinators:
 -- #  sequence combinators:

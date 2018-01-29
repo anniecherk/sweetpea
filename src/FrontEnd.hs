@@ -1,5 +1,5 @@
 module FrontEnd
-( Design(..), HLAST(..), HLLabelTree(..), HLConstraint(..)
+( Design(..), HLAST(..), HLLabelTree(..), HLConstraint(..), Derivation(..)
 -- for testing
 , enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
 -- , HLSet(..)
@@ -9,6 +9,7 @@ module FrontEnd
 --
 , makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize
 -- multiFullyCrossSize
+, leafNamesInDesign
 , synthesizeTrials, decode )
 where
 
@@ -35,7 +36,13 @@ data HLBlock = HLBlock { hlnumTrials   :: Int
 --     ie [color, [red, blue]]
 -- A design is just a list of factors
 type Design = [HLLabelTree]
-data HLLabelTree = Factor String [HLLabelTree] | Level String | Transition HLLabelTree deriving(Show, Eq)
+data HLLabelTree = Factor String [HLLabelTree]
+                 | Level String
+                 | DerivedLevel String Derivation deriving (Show, Eq)
+              --   | Transition HLLabelTree
+
+data Derivation = Equal [HLLabelTree]
+                | NotEq [HLLabelTree] deriving (Show, Eq)
 
 -- The "High Level" AST is just a list of blocks
 -- In the future this might also include cross-block constraints
@@ -52,6 +59,8 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
+                   | DeriveEqual [Int] Int -- indices of the dependent levels & own index
+                   | DeriveNotEq [Int] Int -- indices of the dependent levels & own index
                    | FullyCross deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
 -- we can rederive # reps by looking at numTrials & the design
@@ -94,7 +103,7 @@ synthesizeTrials ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 countLeaves :: HLLabelTree -> Int
 countLeaves (Factor _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
 countLeaves (Level _) = 1
-countLeaves (Transition factor) = undefined --idk...
+countLeaves (DerivedLevel _ _) = 1 --idk...
 
 -- reports number of leaf nodes in full design (just a list of trees)
 totalLeavesInDesign :: Design -> Int
@@ -115,7 +124,18 @@ leafNamesInDesign = concatMap getLeafNames
 getLeafNames :: HLLabelTree -> [[String]]
 getLeafNames (Factor name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
 getLeafNames (Level name) = [[name]]
-getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
+getLeafNames (DerivedLevel name _) = [[name]]
+-- getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
+
+-- for derivations we need to group by level name (for equality, for now (TODO?))
+-- DeriveEqual [Int] Int -- indices of the dependent levels & own index
+-- | DeriveNotEq [Int] Int
+makeHLDerivation :: HLLabelTree -> Design -> Maybe HLConstraint
+makeHLDerivation (Factor _ _) _ = Nothing
+makeHLDerivation (Level _)    _ = Nothing
+makeHLDerivation (DerivedLevel name (Equal factors)) design = Just (DeriveEqual [0, 3] 5)
+makeHLDerivation (DerivedLevel name (NotEq factors)) design = Just (DeriveNotEq [0, 3] 5)
+
 
 -- returns the index of a name
 -- ie, if the design is ["color", ["red", "blue"]], ["shape" ["circle", "square"]]
@@ -141,6 +161,7 @@ crossedFactors :: Design -> [Int] -> Design
 crossedFactors factors = map (\x -> factors !! x)
 
 -- constructor which gloms on consistency constraint to HLBlocks
+-- also checks for Derived Levels & adds correct derivation constraints
 makeBlock :: Int -> Design -> [Int] -> [HLConstraint] -> HLBlock
 makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs (Consistency : consts)
 
