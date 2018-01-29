@@ -6,7 +6,9 @@ module FrontEnd
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
-, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize, multiFullyCrossSize, synthesizeTrials, decode )
+, makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize
+-- multiFullyCrossSize
+, synthesizeTrials, decode )
 where
 
 import Data.List (transpose, nub, find)
@@ -22,9 +24,9 @@ import StatefulCompiler
 -- and what the "design" of the trial is- the design is a tree which you
 -- can use to find out things like how many levels there are and how big the trials are
 -- They also know what constraints they have applied to them at a high level
-data HLBlock = HLBlock { hlnumTrials :: Int
-                       , hldesign :: Design
-                       , crossing :: Design -- crossing will either be == hldesign or a subset ordered in the same way
+data HLBlock = HLBlock { hlnumTrials   :: Int
+                       , hldesign      :: Design
+                       , crossingIdxs  :: [Int] -- crossing will either be == hldesign or a subset ordered in the same way
                        , hlconstraints :: [HLConstraint]
                        } deriving(Show, Eq)
 
@@ -49,7 +51,7 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
-                   | FullyCross Design deriving(Show, Eq)
+                   | FullyCross [Int] deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
 -- we can rederive # reps by looking at numTrials & the design
 
@@ -62,13 +64,13 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
 type ILAST = [ILBlock]
 
 -- so a block that occupies: 0, 1, 2, 3 the startAddr is 0 & the endAddr is 3
-data ILBlock = ILBlock { ilnumTrials :: Int
-                      , ilstartAddr :: Int
-                      , ilendAddr :: Int
-                      , ildesign :: Design
-                      , ilcrossing :: Design
-                      , ilconstraints :: [HLConstraint]
-                      } deriving(Show, Eq)
+data ILBlock = ILBlock { ilnumTrials   :: Int
+                       , ilstartAddr   :: Int
+                       , ilendAddr     :: Int
+                       , ildesign      :: Design
+                       , ilcrossingIdxs:: [Int]
+                       , ilconstraints :: [HLConstraint]
+                       } deriving(Show, Eq)
 
 -------------------------
 -- The "Low Level" representation turns constraints into actionable commands
@@ -97,12 +99,12 @@ countLeaves (Transition factor) = undefined --idk...
 totalLeavesInDesign :: Design -> Int
 totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
 
+
 -- flattened version:
 -- ["color red", "color blue", "shape circle", "shape square"]
 leafNamesInDesignFlat :: Design -> [String]
 leafNamesInDesignFlat design = map unwords $ leafNamesInDesign design
 
---
 
 -- leafNamesInDesign design
 -- [["color", "red"],["color", "blue"],["shape", "circle"],["shape", "square"]]
@@ -134,19 +136,22 @@ getVarsByName target (ILBlock _ start end design cross _) = map (!! indexOfLevel
   where allVars = chunkify [start..end] (totalLeavesInDesign design)
 -------------------------------------------------------------
 
+crossedFactors :: Design -> [Int] -> Design
+crossedFactors factors = map (\x -> factors !! x)
+
 -- constructor which gloms on consistency constraint to HLBlocks
-makeBlock :: Int -> Design -> Design -> [HLConstraint] -> HLBlock
-makeBlock numTs des cross consts = HLBlock numTs des cross (Consistency : consts)
+makeBlock :: Int -> Design -> [Int] -> [HLConstraint] -> HLBlock
+makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs (Consistency : consts)
 
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
-fullyCrossSize :: Design -> Int
-fullyCrossSize factors = numStates
-  where numStates = foldl (\acc x -> acc * countLeaves x) 1 factors
+fullyCrossSize :: Design -> [Int] -> Int
+fullyCrossSize factors crossingIdxs = numStates
+  where numStates = foldl (\acc x -> acc * countLeaves x) 1 $ crossedFactors factors crossingIdxs
 
 -- HACK
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
-multiFullyCrossSize :: Design -> Int -> Int
-multiFullyCrossSize factors rep = rep * fullyCrossSize factors
+-- multiFullyCrossSize :: Design -> Int -> Int
+-- multiFullyCrossSize factors rep = rep * fullyCrossSize factors
 
 -------------------------------------------------------------
 
@@ -176,7 +181,7 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ _ constraints) = concatMapM (`desugarCo
 
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
-desugarConstraint (FullyCross design)  inBlock = llfullyCross design inBlock
+{- desugarConstraint (FullyCross design)  inBlock = llfullyCross design inBlock -}
 desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
 desugarConstraint (NoMoreThanKeveryJ k j level) inBlock = return $ noMoreThanInRange k j level inBlock
 desugarConstraint (AtLeastKInARow k level) inBlock = return $ noFewerThanInRange k k level inBlock
@@ -217,13 +222,15 @@ levelsInRange k range level inBlock = slidingWindow range allVarsForLevel
 -- 1. Generate Intermediate Vars
 -- 2. Entangle them w/ block vars
 -- 3. 1 hot the *states* ie, 1 red circle, etc
-llfullyCross :: Design -> ILBlock -> State (Count, CNF) [LLConstraint]
-llfullyCross crossedDesign block@(ILBlock numTrials start end _ _ _) = do
-  let numStates = fullyCrossSize crossedDesign -- added for multiFullyCross; for single fullycross numStates = numTrials
+llfullyCross :: ILBlock -> State (Count, CNF) [LLConstraint]
+llfullyCross block@(ILBlock numTrials start end design crossingIdxs _) = do
+  let crossed = crossedFactors design crossingIdxs
+  let numStates = fullyCrossSize design crossingIdxs -- updated
   let numReps = div numTrials numStates -- reversing how many reps were in MultiFullyCross; for single fullycross numReps = 1
   stateVars <- getNFresh (numTrials * numStates) -- #1
   let states = chunkify stateVars numStates
   let transposedStates = transpose states -- transpose so that we 1-hot each of "the same" state
+-- ANNIE I AM HERE
   let levels = getShapedLevels block --BUG: THIS ISN'T CORRECT WHEN DESIGN != CROSSING
   let entanglements = concatMap (uncurry entangleFC) $ zip states levels
   let entangleConstraints = map (uncurry Entangle) entanglements -- #2
@@ -248,31 +255,47 @@ trialConsistency block = map OneHot allLevelPairs
 -- helper for getting shaped levels
 -- given a starting index, and a list that says how many levels in each factor, returns one trial
 -- ie getTrialVars 1 [2, 2] => [[1, 2], [3, 4]]
+-- getTrialVars 8 [3, 2, 2] => [[8,9,10],[11,12],[13,14]]
 getTrialVars :: Int -> [Int] -> [[Int]]
 getTrialVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
 
+-- TODO: todo: move to unit tests...
+-- NOTE: THIS VERSION WORKS FOR **ALL** FACTORS, NOT JUST THE ONES IN THE CROSSING
 -- returns the level vars, nested by factor then by trial
 -- ie if the block has color=r, b & shape=c, s
 -- then a nesting might be
--- [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
+-- design = [(Factor "color" [(Level "red"), (Level "blue")]), (Factor "shape" [(Level "circle"), (Level "square")])]
+-- getShapedLevels (ILBlock 8 1 8 design design []) @?= [ [[1, 2], [3, 4]], [[5, 6], [7, 8]] ]
+--
+-- design2 = [(Factor "color" [(Level "red"), (Level "blue")]), (Factor "shape" [(Level "circle"), (Level "square")]), (Factor "size" [(Level "big"), (Level "small")])]
+-- crossing = remove design2 [(Factor "size" [(Level "big"), (Level "small")])]
+-- getShapedLevels (ILBlock 8 1 48 design crossing []) @?=
+-- [[[1,2],[3,4],[5,6]],[[7,8],[9,10],[11,12]],[[13,14],[15,16],[17,18]],[[19,20],[21,22],[23,24]],[[25,26],[27,28],[29,30]],[[31,32],[33,34],[35,36]],[[37,38],[39,40],[41,42]],[[43,44],[45,46],[47,48]]]
+--
+-- design = [Factor "color" [Level "red", Level "blue", Level "green"], Factor "size" [Level "big", Level "small"], Factor "shape" [Level "circle", Level "square"]]
+-- getShapedLevels (ILBlock 2 8 21 design _ _) @?=
+-- [[[8,9,10],[11,12],[13,14]],[[15,16,17],[18,19],[20,21]]]
 getShapedLevels :: ILBlock -> [[[Int]]]
-getShapedLevels (ILBlock numTrials start end design crossing _) = levelGroups
-  where trialSize = totalLeavesInDesign design
-        trialShape = map countLeaves design
-        levelGroups = map (`getTrialVars` trialShape) [start, (trialSize+1).. end]
-
+getShapedLevels (ILBlock numTrials start end design _ _) = levelGroups
+  where trialSize   = totalLeavesInDesign design -- :: Int
+        trialShape  = map countLeaves design     -- :: [Int]
+        levelGroups = map (`getTrialVars` trialShape) [start, (start+trialSize).. end]
+                         -- getTrialVars 8 [3, 2, 2] => [[8,9,10],[11,12],[13,14]]
 
 
 -- A modified version that uses only the subset that's crossed
-getShapedCrossedLevels :: Design -> ILBlock -> [[[Int]]]
-getShapedCrossedLevels crossedDesign (ILBlock numTrials start end _ _ _) = levelGroups
-  where trialSize = totalLeavesInDesign crossedDesign
-        trialShape = map countLeaves crossedDesign
-        -- TODO: THIS IS WRONG
-        levelGroups = map (`getTrialVars` trialShape) [start, (trialSize+1).. end]
+-- This method only gets called to bind the crossing constraints
+-- EXAMPLE
+-- design = [Factor "color" [Level "red", Level "blue", Level "green"], Factor "size" [Level "big", Level "small"], Factor "shape" [Level "circle", Level "square"]]
+-- getShapedLevels (ILBlock 2 8 21 design _ _) @?=
+-- [[[8,9,10],[13,14]],[[15,16,17],[20,21]]]
+getShapedOnlyCrossedLevels :: ILBlock -> [[[Int]]]
+getShapedOnlyCrossedLevels block@(ILBlock _ _ _ _ crossingIdxs _) = crossedVars
+  where allVars = getShapedLevels block
+        crossedVars = map (\sublist -> map (\idx -> sublist !! idx) crossingIdxs) allVars
 
-        -- compute indices where crossing matches design
-        -- filter for those indicies
+
+
 
 -------------------------------------------------------------
 -- Transformation time!
