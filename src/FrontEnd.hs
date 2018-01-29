@@ -3,6 +3,7 @@ module FrontEnd
 -- for testing
 , enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
 -- , HLSet(..)
+, crossedFactors
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
@@ -51,7 +52,7 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
-                   | FullyCross [Int] deriving(Show, Eq)
+                   | FullyCross deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
 -- we can rederive # reps by looking at numTrials & the design
 
@@ -181,7 +182,7 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ _ constraints) = concatMapM (`desugarCo
 
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
-{- desugarConstraint (FullyCross design)  inBlock = llfullyCross design inBlock -}
+desugarConstraint FullyCross  inBlock = llfullyCross inBlock
 desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
 desugarConstraint (NoMoreThanKeveryJ k j level) inBlock = return $ noMoreThanInRange k j level inBlock
 desugarConstraint (AtLeastKInARow k level) inBlock = return $ noFewerThanInRange k k level inBlock
@@ -216,22 +217,19 @@ levelsInRange k range level inBlock = slidingWindow range allVarsForLevel
   where allVarsForLevel = getVarsByName level inBlock
 
 
-
-
-
 -- 1. Generate Intermediate Vars
 -- 2. Entangle them w/ block vars
 -- 3. 1 hot the *states* ie, 1 red circle, etc
 llfullyCross :: ILBlock -> State (Count, CNF) [LLConstraint]
-llfullyCross block@(ILBlock numTrials start end design crossingIdxs _) = do
+llfullyCross block@(ILBlock numTrials _ _ design crossingIdxs _) = do
   let crossed = crossedFactors design crossingIdxs
   let numStates = fullyCrossSize design crossingIdxs -- updated
-  let numReps = div numTrials numStates -- reversing how many reps were in MultiFullyCross; for single fullycross numReps = 1
-  stateVars <- getNFresh (numTrials * numStates) -- #1
+  let numReps = div numTrials numStates -- TODO reversing how many reps were in MultiFullyCross; for single fullycross numReps = 1
+  stateVars <- getNFresh (numTrials * numStates) -- #1 --debug: stateVars = [1 ..numTrials*numStates]
   let states = chunkify stateVars numStates
   let transposedStates = transpose states -- transpose so that we 1-hot each of "the same" state
 -- ANNIE I AM HERE
-  let levels = getShapedLevels block --BUG: THIS ISN'T CORRECT WHEN DESIGN != CROSSING
+  let levels = getShapedOnlyCrossedLevels block --BUG: THIS ISN'T CORRECT WHEN DESIGN != CROSSING
   let entanglements = concatMap (uncurry entangleFC) $ zip states levels
   let entangleConstraints = map (uncurry Entangle) entanglements -- #2
 --  let oneHotConstraints = map OneHot transposedStates -- #3

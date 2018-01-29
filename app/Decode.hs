@@ -7,7 +7,7 @@ main = do let color = Factor "color" [Level "red", Level "blue"]
           let shape = Factor "shape" [Level "circle", Level "square"]
           let size  = Factor "size"  [Level "small",  Level "big"]
 
-          let nTrials = 4
+          let nTrials = 8
 
           let design = [color, shape, size]
           contents <- readFile "ex.res"

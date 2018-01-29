@@ -12,7 +12,7 @@ import Data.List ((\\))
 fullyCrossedBlock :: Design -> [Int] -> [HLConstraint] -> HLBlock
 fullyCrossedBlock design crossingIdxs constraints = makeBlock numTrials design crossingIdxs allConstraints
   where numTrials      = fullyCrossSize design crossingIdxs
-        allConstraints = (FullyCross crossingIdxs) : constraints
+        allConstraints = FullyCross : constraints
 
 
 
