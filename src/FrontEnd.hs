@@ -9,11 +9,11 @@ module FrontEnd
 --
 , makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize
 -- multiFullyCrossSize
-, leafNamesInDesign
+, leafNamesInDesign, indexOfLevel
 , synthesizeTrials, decode )
 where
 
-import Data.List (transpose, nub, find)
+import Data.List (transpose, nub, find, sortBy, groupBy)
 import DataStructures
 import Control.Monad.Trans.State
 import Text.Read (readMaybe)
@@ -59,8 +59,8 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
-                   | DeriveEqual [Int] Int -- indices of the dependent levels & own index
-                   | DeriveNotEq [Int] Int -- indices of the dependent levels & own index
+                   | DeriveEqual [[Int]] Int -- indices of the dependent levels & own index
+                   | DeriveNotEq [[Int]] Int -- indices of the dependent levels & own index
                    | FullyCross deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
 -- we can rederive # reps by looking at numTrials & the design
@@ -128,13 +128,19 @@ getLeafNames (DerivedLevel name _) = [[name]]
 -- getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
 
 -- for derivations we need to group by level name (for equality, for now (TODO?))
--- DeriveEqual [Int] Int -- indices of the dependent levels & own index
--- | DeriveNotEq [Int] Int
+-- DeriveEqual   [[Int]] Int -- indices of the dependent levels & own index
+-- | DeriveNotEq [[Int]] Int
 makeHLDerivation :: HLLabelTree -> Design -> Maybe HLConstraint
 makeHLDerivation (Factor _ _) _ = Nothing
 makeHLDerivation (Level _)    _ = Nothing
-makeHLDerivation (DerivedLevel name (Equal factors)) design = Just (DeriveEqual [0, 3] 5)
-makeHLDerivation (DerivedLevel name (NotEq factors)) design = Just (DeriveNotEq [0, 3] 5)
+makeHLDerivation (DerivedLevel name (Equal factors)) design = Just (DeriveEqual [[0, 3]] 5)
+makeHLDerivation (DerivedLevel name (NotEq factors)) design = Just (DeriveNotEq [[0, 3]] 5)
+
+getMatchIndexes :: Design -> [[Int]]
+getMatchIndexes design = map (map (`indexOfLevel` design)) matches
+  where sorted = sortBy (\x y -> compare (last x) (last y)) $ leafNamesInDesign design
+        grouped = groupBy (\x y -> last x == last y) sorted
+        matches =  filter (\x -> length x > 1) grouped
 
 
 -- returns the index of a name
