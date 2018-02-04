@@ -1,5 +1,7 @@
 module FrontEndSugar
 ( fullyCrossedBlock -- , multiFullyCrossedBlock
+, equal
+, notEq
 , remove )
 where
 
@@ -7,8 +9,12 @@ import FrontEnd
 import DataStructures
 import Data.List ((\\))
 
+equal :: HLLabelTree -> HLLabelTree -> Derivation
+equal = Derivation (==)
 
--- TODO CANT HANDLE CROSSING /= DESIGN!!
+notEq :: HLLabelTree -> HLLabelTree -> Derivation
+notEq = Derivation (/=)
+
 fullyCrossedBlock :: Design -> [Int] -> [HLConstraint] -> HLBlock
 fullyCrossedBlock design crossingIdxs constraints = makeBlock numTrials design crossingIdxs allConstraints
   where numTrials      = fullyCrossSize design crossingIdxs

@@ -6,6 +6,7 @@ import CodeGen
 import DataStructures
 
 
+
 main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
   where
@@ -13,20 +14,29 @@ main = putStrLn (showDIMACS cnf nVars)
     color = Factor "color" [Level "red", Level "blue"]
     text  = Factor "text"  [Level "red", Level "blue"]
 
-    conLevel  = DerivedLevel  "con" (Equal [color, text])
-    incLevel  = DerivedLevel  "inc" (NotEq [color, text])
+    --conLevel  = DerivedLevel  "con" (Derivation (==) color text)
+    --incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
+    conLevel  = DerivedLevel  "con" (equal color text)
+    incLevel  = DerivedLevel  "inc" (notEq color text)
     conFactor = Factor "congruent?"  [conLevel, incLevel]
+
+    design       = [color, text, conFactor]
 
     k = 1
     constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
 
-    design       = [color, text, conFactor]
     crossing     = [0, 1]
     block        = fullyCrossedBlock design crossing constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment
 
 
+
+
+    -- sameLevels :: Factor -> Factor -> Bool
+    -- sameLevels (Level a) (Level b) = a == b
+    -- sameLevels a@(Factor _ children) (Level b) = or $ map sameLevels children b  -- true if any are true
+    -- sameLevels a@(Factor _) b@(Factor )
 
     -- color = Factor "color" [Level "red", Level "blue", Level "green"]
     -- shape = Factor "shape" [Level "circle", Level "square"]

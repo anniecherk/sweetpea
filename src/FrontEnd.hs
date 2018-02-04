@@ -3,17 +3,19 @@ module FrontEnd
 -- for testing
 , enforceOneHot, HLBlock(..), ILBlock(..), LLConstraint(..), LLAST(..)
 -- , HLSet(..)
-, crossedFactors
+, crossedFactors, cross
+, getLeafNames
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
 , makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize
 -- multiFullyCrossSize
 , leafNamesInDesign, indexOfLevel, getMatchIdxs
+, makeHLDerivation, processDerivations
 , synthesizeTrials, decode )
 where
 
-import Data.List (transpose, nub, find, sortBy, groupBy)
+import Data.List (transpose, nub, find, sortBy, groupBy, tails)
 import DataStructures
 import Control.Monad.Trans.State
 import Text.Read (readMaybe)
@@ -36,13 +38,18 @@ data HLBlock = HLBlock { hlnumTrials   :: Int
 --     ie [color, [red, blue]]
 -- A design is just a list of factors
 type Design = [HLLabelTree]
-data HLLabelTree = Factor String [HLLabelTree]
+data HLLabelTree = Ignore -- this is a dummy variable for sequence specifications
+                 | Factor String [HLLabelTree]
                  | Level String
                  | DerivedLevel String Derivation deriving (Show, Eq)
               --   | Transition HLLabelTree
 
-data Derivation = Equal [HLLabelTree]
-                | NotEq [HLLabelTree] deriving (Show, Eq)
+-- user defined function between all combos of the levels of the two factors
+data Derivation = Derivation (String -> String -> Bool) HLLabelTree HLLabelTree
+instance Show Derivation where
+    show (Derivation func factA factB) = "Derivation over " ++ show factA ++ " & " ++ show factB
+instance Eq Derivation where
+    Derivation {} == Derivation {} = False --TODO: might want to fix this, but for now, don't do equality over derived factors
 
 -- The "High Level" AST is just a list of blocks
 -- In the future this might also include cross-block constraints
@@ -59,8 +66,7 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
-                   | DeriveEqual [[Int]] Int -- indices of the dependent levels & own index
-                   | DeriveNotEq [[Int]] Int -- indices of the dependent levels & own index
+                   | HLDerivation [[Int]] Int -- indices of the dependent levels & own index
                    | FullyCross deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
 -- we can rederive # reps by looking at numTrials & the design
@@ -104,6 +110,7 @@ countLeaves :: HLLabelTree -> Int
 countLeaves (Factor _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
 countLeaves (Level _) = 1
 countLeaves (DerivedLevel _ _) = 1 --idk...
+countLeaves  Ignore = 0
 
 -- reports number of leaf nodes in full design (just a list of trees)
 totalLeavesInDesign :: Design -> Int
@@ -125,6 +132,7 @@ getLeafNames :: HLLabelTree -> [[String]]
 getLeafNames (Factor name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
 getLeafNames (Level name) = [[name]]
 getLeafNames (DerivedLevel name _) = [[name]]
+getLeafNames  Ignore = []
 -- getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
 
 
@@ -143,6 +151,10 @@ getLeafNames (DerivedLevel name _) = [[name]]
 processDerivations :: Design -> [HLConstraint]
 processDerivations design = concatMap (`makeHLDerivation` design) design
 
+
+
+
+
 -- for derivations we need to group by level name (for equality, for now (TODO?))
 --   DeriveEqual   [[Int]] Int -- indices of the dependent levels & own index
 -- | DeriveNotEq [[Int]] Int
@@ -151,16 +163,36 @@ processDerivations design = concatMap (`makeHLDerivation` design) design
 makeHLDerivation :: HLLabelTree -> Design -> [HLConstraint]
 makeHLDerivation (Factor _ children) design = concatMap (`makeHLDerivation` design) children
 makeHLDerivation (Level _)    _ = []
-makeHLDerivation (DerivedLevel name (Equal factors)) design =
-  [DeriveEqual (getMatchIdxs design (==)) 5]
-makeHLDerivation (DerivedLevel name (NotEq factors)) design =
-  [DeriveEqual (getMatchIdxs design (/=)) 5]
+makeHLDerivation  Ignore      _ = []
+makeHLDerivation (DerivedLevel name (Derivation func factA factB)) design =
+  [HLDerivation (getMatchIdxs design factA factB func) 5]
 
-getMatchIdxs :: Design -> (String -> String -> Bool) -> [[Int]]
-getMatchIdxs design eqOrNot = map (map (`indexOfLevel` design)) matches
-  where sorted = sortBy (\x y -> compare (last x) (last y)) $ leafNamesInDesign design
-        grouped = groupBy (\x y -> last x `eqOrNot` last y) sorted
-        matches =  filter (\x -> length x > 1) grouped
+-- pairs :: [a] -> [(a,a)]
+-- pairs l = [(x,y) | (x:ys) <- tails l, y <- ys]
+
+cross :: [a] -> [a] -> [(a,a)]
+cross a b = [(x,y) | (x:ys) <- tails a, y <- b]
+
+getMatchIdxs :: Design -> HLLabelTree -> HLLabelTree -> (String -> String -> Bool) -> [[Int]]
+getMatchIdxs design factA factB func = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
+  where combos = cross (getLeafNames factA) (getLeafNames factB)
+        matches = filter (\(x,y) -> func (last x) (last y)) combos
+
+
+
+-- map (map (`indexOfLevel` design)) matches
+--   where sorted = sortBy (\x y -> compare (last x) (last y)) $ leafNamesInDesign factors
+--         grouped = groupBy (\x y -> last x `eqOrNot` last y) sorted
+--         matches =  filter (\x -> length x > 1) grouped
+-- -----------
+--
+
+
+-- a helper for getMatchIdxs, it's a problem of not having "pointers" into the design
+-- so the derivedFactor defines the factors it's derived over, but we need to know their
+-- indexes in the overall design. That's what this is figuring out.
+-- idxsOfLevelInFullDesign :: String -> Design -> [Int]
+-- idxsOfLevelInFullDesign factors design = map (`indexOfLevel` design) (leafNamesInDesign factors)
 
 -- TODO: why is the interface not ["color", "red"]
 -- returns the index of a name
