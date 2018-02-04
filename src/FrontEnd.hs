@@ -9,7 +9,7 @@ module FrontEnd
 --
 , makeBlock, hlToIl, ilToll, buildCNF, fullyCrossSize
 -- multiFullyCrossSize
-, leafNamesInDesign, indexOfLevel
+, leafNamesInDesign, indexOfLevel, getMatchIdxs
 , synthesizeTrials, decode )
 where
 
@@ -127,22 +127,42 @@ getLeafNames (Level name) = [[name]]
 getLeafNames (DerivedLevel name _) = [[name]]
 -- getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
 
--- for derivations we need to group by level name (for equality, for now (TODO?))
--- DeriveEqual   [[Int]] Int -- indices of the dependent levels & own index
--- | DeriveNotEq [[Int]] Int
-makeHLDerivation :: HLLabelTree -> Design -> Maybe HLConstraint
-makeHLDerivation (Factor _ _) _ = Nothing
-makeHLDerivation (Level _)    _ = Nothing
-makeHLDerivation (DerivedLevel name (Equal factors)) design = Just (DeriveEqual [[0, 3]] 5)
-makeHLDerivation (DerivedLevel name (NotEq factors)) design = Just (DeriveNotEq [[0, 3]] 5)
 
-getMatchIndexes :: Design -> [[Int]]
-getMatchIndexes design = map (map (`indexOfLevel` design)) matches
+-- getFullDerivedLevelName :: HLLabelTree -> String -> Maybe String
+-- getFullDerivedLevelName (Level _) _ = Nothing
+-- getFullDerivedLevelName (DerivedLevel name _) target
+--   | name == target = Just name
+--   | name != target = Nothing
+-- getFullDerivedLevelName (Factor name children) =
+--
+--   where process x = case x of
+--                     Just kidName -> name : kidName
+--                     Nothing      -> Nothing
+
+-- goes through and pulls out HL constraints for any derived factors, if any exist
+processDerivations :: Design -> [HLConstraint]
+processDerivations design = concatMap (`makeHLDerivation` design) design
+
+-- for derivations we need to group by level name (for equality, for now (TODO?))
+--   DeriveEqual   [[Int]] Int -- indices of the dependent levels & own index
+-- | DeriveNotEq [[Int]] Int
+-- go :: String -> HLLabelTree -> Design -> [HLConstraint]
+-- go name (Factor parName children) = map (\x -> go parName)
+makeHLDerivation :: HLLabelTree -> Design -> [HLConstraint]
+makeHLDerivation (Factor _ children) design = concatMap (`makeHLDerivation` design) children
+makeHLDerivation (Level _)    _ = []
+makeHLDerivation (DerivedLevel name (Equal factors)) design =
+  [DeriveEqual (getMatchIdxs design (==)) 5]
+makeHLDerivation (DerivedLevel name (NotEq factors)) design =
+  [DeriveEqual (getMatchIdxs design (/=)) 5]
+
+getMatchIdxs :: Design -> (String -> String -> Bool) -> [[Int]]
+getMatchIdxs design eqOrNot = map (map (`indexOfLevel` design)) matches
   where sorted = sortBy (\x y -> compare (last x) (last y)) $ leafNamesInDesign design
-        grouped = groupBy (\x y -> last x == last y) sorted
+        grouped = groupBy (\x y -> last x `eqOrNot` last y) sorted
         matches =  filter (\x -> length x > 1) grouped
 
-
+-- TODO: why is the interface not ["color", "red"]
 -- returns the index of a name
 -- ie, if the design is ["color", ["red", "blue"]], ["shape" ["circle", "square"]]
 -- then the queries / responses are:
@@ -166,10 +186,12 @@ getVarsByName target (ILBlock _ start end design cross _) = map (!! indexOfLevel
 crossedFactors :: Design -> [Int] -> Design
 crossedFactors factors = map (\x -> factors !! x)
 
+
 -- constructor which gloms on consistency constraint to HLBlocks
 -- also checks for Derived Levels & adds correct derivation constraints
 makeBlock :: Int -> Design -> [Int] -> [HLConstraint] -> HLBlock
-makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs (Consistency : consts)
+makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs (processDerivations des ++ (Consistency : consts))
+
 
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
 fullyCrossSize :: Design -> [Int] -> Int
