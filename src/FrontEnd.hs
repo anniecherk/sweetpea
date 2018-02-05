@@ -5,6 +5,7 @@ module FrontEnd
 -- , HLSet(..)
 , crossedFactors, cross
 , getLeafNames
+, iffDerivations
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
@@ -339,6 +340,10 @@ trialConsistency block = map OneHot allLevelPairs
   where allLevelPairs = concat $ getShapedLevels block
 
 -- sample the block at the toBind indicies, and entangle each of those w/ index
+-- example:
+-- inBlock = (ILBlock 3 8 25 design [0, 1, 2] [])
+-- iffDerivations [[0, 2], [1, 3]] 4 inBlock  @?=
+--    Entangle 12 [8,10],Entangle 12 [9,11],Entangle 18 [14,16],Entangle 18 [15,17],Entangle 24 [20,22],Entangle 24 [21,23]]
 iffDerivations :: [[Int]] -> Int -> ILBlock -> [LLConstraint]
 iffDerivations toBind index inBlock = map (uncurry Entangle) iteration
   where allVars = map concat $ getShapedLevels inBlock
@@ -372,7 +377,7 @@ getTrialVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+
 -- [[[1,2],[3,4],[5,6]],[[7,8],[9,10],[11,12]],[[13,14],[15,16],[17,18]],[[19,20],[21,22],[23,24]],[[25,26],[27,28],[29,30]],[[31,32],[33,34],[35,36]],[[37,38],[39,40],[41,42]],[[43,44],[45,46],[47,48]]]
 --
 -- design = [Factor "color" [Level "red", Level "blue", Level "green"], Factor "size" [Level "big", Level "small"], Factor "shape" [Level "circle", Level "square"]]
--- getShapedLevels (ILBlock 2 8 21 design _ _) @?=
+-- getShapedLevels (ILBlock 2 8 21 design [0, 1, 2] []) @?=
 -- [[[8,9,10],[11,12],[13,14]],[[15,16,17],[18,19],[20,21]]]
 getShapedLevels :: ILBlock -> [[[Int]]]
 getShapedLevels (ILBlock numTrials start end design _ _) = levelGroups

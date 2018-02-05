@@ -20,13 +20,16 @@ tests :: TestTree
 tests = testGroup "Tests" [frontEndTests, dataStructureTests]
 
 frontEndTests :: TestTree
-frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, hlTreeTests, hltoilTests, iltollTests]
+frontEndTests = testGroup "FrontEnd Tests" [oneHotTests, hlTreeTests, hltoilTests, iltollTests, iffDerivationsTests]
 
 dataStructureTests :: TestTree
 dataStructureTests = testGroup "DataStructure Tests" [helperTests]
 
 ---------------------------------------------------------------------------------------------------------------
 -- FRONT END TESTS
+
+
+
 
 oneHotTests = testGroup "one hot tests"
   [ testCase "empty edgecase" $
@@ -41,6 +44,11 @@ oneHotTests = testGroup "one hot tests"
   ,  testCase "4 elements + indep of variables & cnf" $
       execState (enforceOneHot [1..4]) (initState 6)
         @?= (6,[[-1,-2],[-1,-3],[-1,-4],[-2,-3],[-2,-4],[-3,-4],[1,2,3,4]]) -- TODO: check against cryptosatmini
+  ]
+
+iffDerivationsTests = testGroup "low-level derivation constraints"
+  [
+
   ]
 
 hlTreeTests = testGroup "verifying properties of the design trees"
@@ -65,13 +73,13 @@ hltoilTests = testGroup "hl to il variable allocation tests"
 iltollTests = testGroup "il to ll low level tests"
   [ testCase "constraint gen running example" $
       evalState (ilBlockToLLBlocks testILBlock) (initState 4)
-        @?=  [OneHot [1,2],OneHot [3,4],OneHot [5,7],OneHot [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
+        @?=  [OneHot [1,2],OneHot [3,4],AssertEq 1 [5,7],AssertEq 1 [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
   , testCase "getShapedLevel running example" $
       getShapedLevels testILBlock
         @?= [[[1, 2]], [[3, 4]]]
   , testCase "fullycross constraint gen running example" $
       evalState (llfullyCross testILBlock) (initState 4)
-        @?= [OneHot [5,7],OneHot [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
+        @?= [AssertEq 1 [5,7],AssertEq 1 [6,8],Entangle 5 [1],Entangle 6 [2],Entangle 7 [3],Entangle 8 [4]]
   , testCase "getTrials helper test" $
       getTrialVars 1 [2, 2]
         @?= [[1, 2], [3, 4]]
@@ -91,11 +99,13 @@ testHLBlock :: HLBlock
 testHLBlock = block
   where color = Factor "color" [Level "red", Level "blue"]
         design = [color]
-        block = makeBlock (fullyCrossSize design) [color] [FullyCross]
+        crossingIdxs = [0]
+        numTrials = fullyCrossSize design crossingIdxs
+        block = makeBlock numTrials design crossingIdxs [FullyCross]
 
 
 testILBlock :: ILBlock
-testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [Factor "color" [Level "red",Level "blue"]], ilconstraints = [Consistency,FullyCross]}
+testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [Factor "color" [Level "red",Level "blue"]], ilcrossingIdxs = [0], ilconstraints = [Consistency,FullyCross]}
 
 
 
