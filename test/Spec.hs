@@ -8,6 +8,7 @@ import Control.Monad (replicateM)
 
 
 import FrontEnd
+import FrontEndSugar
 import DataStructures
 
 
@@ -47,8 +48,9 @@ oneHotTests = testGroup "one hot tests"
   ]
 
 iffDerivationsTests = testGroup "low-level derivation constraints"
-  [
-
+  [ testCase "3 wide, non-aligned entanglement test" $
+      iffDerivations [[0, 2], [1, 3]] 4 derivedTestILBlock
+        @?= [Entangle 5 [1,3],Entangle 5 [2,4],Entangle 11 [7,9],Entangle 11 [8,10],Entangle 17 [13,15],Entangle 17 [14,16],Entangle 23 [19,21],Entangle 23 [20,22]]
   ]
 
 hlTreeTests = testGroup "verifying properties of the design trees"
@@ -68,6 +70,9 @@ hltoilTests = testGroup "hl to il variable allocation tests"
   [ testCase "running example" $
       evalState (allocateVars testHLBlock) emptyState
         @?= testILBlock
+  ,  testCase "not fullyCrossed example" $
+      evalState (allocateVars notFullyCrossedTestHLBlock) emptyState
+        @?= notFullyCrossedTestILBlock
   ]
 
 iltollTests = testGroup "il to ll low level tests"
@@ -93,21 +98,6 @@ iltollTests = testGroup "il to ll low level tests"
       entangleFC [5, 6, 7, 8] [[1, 2], [3, 4]] -- first arg is "state" vars, second arg is "level" vars
         @?= [(5,[1,3]),(6,[1,4]),(7,[2,3]),(8,[2,4])]
   ]
-
-
-testHLBlock :: HLBlock
-testHLBlock = block
-  where color = Factor "color" [Level "red", Level "blue"]
-        design = [color]
-        crossingIdxs = [0]
-        numTrials = fullyCrossSize design crossingIdxs
-        block = makeBlock numTrials design crossingIdxs [FullyCross]
-
-
-testILBlock :: ILBlock
-testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [Factor "color" [Level "red",Level "blue"]], ilcrossingIdxs = [0], ilconstraints = [Consistency,FullyCross]}
-
-
 
 
 ---------------------------------------------------------------------------------------------------------------
@@ -142,3 +132,51 @@ helperTests = testGroup "var/cnf utility tests"
         execState (setToZero 1) emptyState
           @?= (0,[[-1]])
   ]
+
+
+
+-------------- Test Blocks
+
+-- Easy tests:
+testHLBlock :: HLBlock
+testHLBlock = block
+  where color = Factor "color" [Level "red", Level "blue"]
+        design = [color]
+        crossingIdxs = [0]
+        numTrials = fullyCrossSize design crossingIdxs
+        block = makeBlock numTrials design crossingIdxs [FullyCross]
+
+testILBlock :: ILBlock
+testILBlock = ILBlock {ilnumTrials = 2, ilstartAddr = 1, ilendAddr = 4, ildesign = [Factor "color" [Level "red",Level "blue"]], ilcrossingIdxs = [0], ilconstraints = [Consistency,FullyCross]}
+
+
+-- Trickier tests:
+notFullyCrossedTestHLBlock :: HLBlock
+notFullyCrossedTestHLBlock = block
+  where color = Factor "color" [Level "red", Level "blue"]
+        size  = Factor "size"  [Level "big", Level "medium", Level "small"]
+        shape = Factor "shape" [Level "circle", Level "square"]
+        design = [color, size, shape]
+        crossingIdxs = [0, 2]
+        numTrials = fullyCrossSize design crossingIdxs
+        block = makeBlock numTrials design crossingIdxs [FullyCross]
+
+
+notFullyCrossedTestILBlock :: ILBlock
+notFullyCrossedTestILBlock = ILBlock {ilnumTrials = 4, ilstartAddr = 1, ilendAddr = 28, ildesign = [Factor "color" [Level "red",Level "blue"],Factor "size" [Level "big",Level "medium",Level "small"],Factor "shape" [Level "circle",Level "square"]], ilcrossingIdxs = [0,2], ilconstraints = [Consistency,FullyCross]}
+
+derivedTestHLBlock :: HLBlock
+derivedTestHLBlock = block
+  where color = Factor "color" [Level "red", Level "blue"]
+        text  = Factor "text"  [Level "red", Level "blue"]
+        conLevel  = DerivedLevel  "con" (equal color text)
+        incLevel  = DerivedLevel  "inc" (notEq color text)
+        conFactor = Factor "congruent?"  [conLevel, incLevel]
+        design       = [color, text, conFactor]
+        crossingIdxs = [0, 1]
+        numTrials = fullyCrossSize design crossingIdxs
+        block = makeBlock numTrials design crossingIdxs [FullyCross]
+
+
+derivedTestILBlock :: ILBlock
+derivedTestILBlock = ILBlock {ilnumTrials = 4, ilstartAddr = 1, ilendAddr = 24, ildesign = [Factor "color" [Level "red",Level "blue"],Factor "text" [Level "red",Level "blue"],Factor "congruent?" [DerivedLevel "con" (Derivation (==) (Factor "color" [Level "red",Level "blue"]) (Factor "text" [Level "red",Level "blue"])),DerivedLevel "inc" (Derivation (==) (Factor "color" [Level "red",Level "blue"]) (Factor "text" [Level "red",Level "blue"]))]], ilcrossingIdxs = [0,1], ilconstraints = [HLDerivation [[0,2],[1,3]] 4,HLDerivation [[0,3],[1,2]] 5,Consistency,FullyCross]}

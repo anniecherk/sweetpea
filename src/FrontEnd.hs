@@ -48,7 +48,7 @@ data HLLabelTree = Ignore -- this is a dummy variable for sequence specification
 -- user defined function between all combos of the levels of the two factors
 data Derivation = Derivation (String -> String -> Bool) HLLabelTree HLLabelTree
 instance Show Derivation where
-    show (Derivation func factA factB) = "Derivation over " ++ show factA ++ " & " ++ show factB
+    show (Derivation func factA factB) = "Derivation" ++ show factA ++ show factB
 instance Eq Derivation where
     Derivation {} == Derivation {} = False --TODO: might want to fix this, but for now, don't do equality over derived factors
 
