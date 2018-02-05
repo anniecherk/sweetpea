@@ -136,56 +136,62 @@ getLeafNames  Ignore = []
 -- getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
 
 
--- getFullDerivedLevelName :: HLLabelTree -> String -> Maybe String
--- getFullDerivedLevelName (Level _) _ = Nothing
--- getFullDerivedLevelName (DerivedLevel name _) target
---   | name == target = Just name
---   | name != target = Nothing
--- getFullDerivedLevelName (Factor name children) =
---
---   where process x = case x of
---                     Just kidName -> name : kidName
---                     Nothing      -> Nothing
-
 -- goes through and pulls out HL constraints for any derived factors, if any exist
 processDerivations :: Design -> [HLConstraint]
 processDerivations design = concatMap (`makeHLDerivation` design) design
 
 
 
-
-
--- for derivations we need to group by level name (for equality, for now (TODO?))
---   DeriveEqual   [[Int]] Int -- indices of the dependent levels & own index
--- | DeriveNotEq [[Int]] Int
--- go :: String -> HLLabelTree -> Design -> [HLConstraint]
--- go name (Factor parName children) = map (\x -> go parName)
+-- for derivations we need to group by level name
+--   HLDerivation   [[Int]] Int -- indices of the dependent levels & own index
+-- here's a long :( example
+-- color = Factor "color" [Level "red", Level "blue"]
+-- text  = Factor "text"  [Level "red", Level "blue"]
+-- conLevel  = DerivedLevel  "con" (Derivation (==) color text)
+-- incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
+-- conFactor = Factor "congruent?"  [conLevel, incLevel]
+-- design       = [color, text, conFactor]
+-- makeHLDerivation color design  @?=  []
+-- makeHLDerivation conFactor design  @?=  [HLDerivation [[0,2],[1,3]] 4,HLDerivation [[0,3],[1,2]] 5]
 makeHLDerivation :: HLLabelTree -> Design -> [HLConstraint]
-makeHLDerivation (Factor _ children) design = concatMap (`makeHLDerivation` design) children
-makeHLDerivation (Level _)    _ = []
-makeHLDerivation  Ignore      _ = []
-makeHLDerivation (DerivedLevel name (Derivation func factA factB)) design =
-  [HLDerivation (getMatchIdxs design factA factB func) 5]
+makeHLDerivation = go []
+  where go :: [String] -> HLLabelTree -> Design -> [HLConstraint]
+  -- case: top-level factor, start off the name train
+        go [] (Factor name children) design = concatMap (\x -> go [name] x design) children
+  -- case: nested factor, just add a name & keep going
+        go parName (Factor name children) design = concatMap (\x -> go (parName ++ [name]) x design) children
+  -- don't care about non-derived levels & ignores
+        go _ (Level _) _ = []
+        go _ Ignore    _ = []
+        go parName (DerivedLevel name (Derivation func factA factB)) design =
+          -- this first call filters the crossing of levels of those two factors to those which satisfy func
+          -- the second call gets the index of the derivedLevel
+          [HLDerivation (getMatchIdxs design factA factB func)
+                        (indexOfLevel (parName ++ [name]) design)]
 
--- pairs :: [a] -> [(a,a)]
--- pairs l = [(x,y) | (x:ys) <- tails l, y <- ys]
 
 cross :: [a] -> [a] -> [(a,a)]
 cross a b = [(x,y) | (x:ys) <- tails a, y <- b]
 
+-- this essentially "applies the derivation"
+-- Here's an unfortunantly long running example
+-- color = Factor "color" [Level "red", Level "blue"]
+-- text  = Factor "text"  [Level "red", Level "blue"]
+-- conLevel  = DerivedLevel  "con" (Derivation (==) color text)
+-- incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
+-- conFactor = Factor "congruent?"  [conLevel, incLevel]
+-- design       = [color, text, conFactor]
+--
+-- factA = Factor "color" [Level "red",Level "blue"]
+-- factB = Factor "text" [Level "red",Level "blue"]
+-- getMatchIdx factA factB (==)  @?=  [0,2],[1,3]]
+-- getMatchIdxs design factA factB (/=)  @?=  [[0,3],[1,2]]
 getMatchIdxs :: Design -> HLLabelTree -> HLLabelTree -> (String -> String -> Bool) -> [[Int]]
 getMatchIdxs design factA factB func = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
   where combos = cross (getLeafNames factA) (getLeafNames factB)
         matches = filter (\(x,y) -> func (last x) (last y)) combos
 
 
-
--- map (map (`indexOfLevel` design)) matches
---   where sorted = sortBy (\x y -> compare (last x) (last y)) $ leafNamesInDesign factors
---         grouped = groupBy (\x y -> last x `eqOrNot` last y) sorted
---         matches =  filter (\x -> length x > 1) grouped
--- -----------
---
 
 
 -- a helper for getMatchIdxs, it's a problem of not having "pointers" into the design
@@ -262,6 +268,7 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ _ constraints) = concatMapM (`desugarCo
 
 
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
+desugarConstraint (HLDerivation toBind index) inBlock = return $ iffDerivations toBind index inBlock
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
 desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
@@ -330,6 +337,19 @@ entangleFC states levels = zip states (sequence levels)
 trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency block = map OneHot allLevelPairs
   where allLevelPairs = concat $ getShapedLevels block
+
+-- sample the block at the toBind indicies, and entangle each of those w/ index
+iffDerivations :: [[Int]] -> Int -> ILBlock -> [LLConstraint]
+iffDerivations toBind index inBlock = map (uncurry Entangle) iteration
+  where allVars = map concat $ getShapedLevels inBlock
+        iteration :: [(Int, [Int])]
+        iteration = do -- list monad
+                      currTrial <- allVars -- grab a single trial from the list of trial vars
+                      is <- toBind         -- grab a single index from the list of indicies to bind
+                      return (currTrial !! index, map (currTrial !!) is)
+
+
+
 
 -- helper for getting shaped levels
 -- given a starting index, and a list that says how many levels in each factor, returns one trial

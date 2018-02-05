@@ -10,7 +10,6 @@ import DataStructures
 main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
   where
-
     color = Factor "color" [Level "red", Level "blue"]
     text  = Factor "text"  [Level "red", Level "blue"]
 
