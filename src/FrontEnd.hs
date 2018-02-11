@@ -269,7 +269,7 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ _ constraints) = concatMapM (`desugarCo
 
 
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
-desugarConstraint (HLDerivation toBind index) inBlock = return $ iffDerivations toBind index inBlock
+desugarConstraint (HLDerivation toBind index) inBlock = iffDerivations toBind index inBlock
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
 desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
@@ -344,16 +344,34 @@ trialConsistency block = map OneHot allLevelPairs
 -- inBlock = (ILBlock 3 8 25 design [0, 1, 2] [])
 -- iffDerivations [[0, 2], [1, 3]] 4 inBlock  @?=
 --    Entangle 12 [8,10],Entangle 12 [9,11],Entangle 18 [14,16],Entangle 18 [15,17],Entangle 24 [20,22],Entangle 24 [21,23]]
-iffDerivations :: [[Int]] -> Int -> ILBlock -> [LLConstraint]
-iffDerivations toBind index inBlock = map (uncurry Entangle) iteration
-  where allVars = map concat $ getShapedLevels inBlock
-        iteration :: [(Int, [Int])]
-        iteration = do -- list monad
+iffDerivations :: [[Int]] -> Int -> ILBlock -> State (Count, CNF) [LLConstraint]
+iffDerivations toBind index inBlock = do -- State Monad
+        let allVars = map concat $ getShapedLevels inBlock
+        let iteration = do -- list monad!!
                       currTrial <- allVars -- grab a single trial from the list of trial vars
-                      is <- toBind         -- grab a single index from the list of indicies to bind
-                      return (currTrial !! index, map (currTrial !!) is)
+                      let derivedVar = currTrial !! index
+                      let allDependencies = do -- this is equivalent to `map (\is -> map (currTrial !!) is) toBind`
+                                              is <- toBind -- grab a single index from the list of indices to bind
+                                              return $ map (currTrial !!) is
+                      return (derivedVar, allDependencies)
+        iffWithDNFList iteration
+        return []
 
 
+-- This takes a list of tuples of the form (a, xs) where xs is a DNF (OR of ANDS) formatted list
+--   and produces <a iff xs> in CNF form
+-- This is needed to synth the derivedFactor bindings, if using it for something else, buyer-beware.
+-- This call will directly put the CNF into the State instead of going through the compiler.
+iffWithDNFList :: [(Int, [[Int]])] -> State (Count, CNF) ()
+iffWithDNFList todo = do --state monad
+     let possibleValidCombos = do --list monad
+                      (index, dnfBindings) <- todo
+                      return $ map (\x -> negate index : x) $ sequence dnfBindings
+     let possibleInvalidCombos = do -- list monad
+                      (index, dnfBindings) <- todo
+                      return $ map (\x -> index : map negate x) dnfBindings
+     mapM_ appendCNF possibleValidCombos
+     mapM_ appendCNF possibleInvalidCombos
 
 
 -- helper for getting shaped levels

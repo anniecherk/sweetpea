@@ -7,14 +7,12 @@ main :: IO ()
 main = do let color = Factor "color" [Level "red", Level "blue"]
           let text  = Factor "text"  [Level "red", Level "blue"]
 
-          --conLevel  = DerivedLevel  "con" (Derivation (==) color text)
-          --incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
           let conLevel  = DerivedLevel  "con" (equal color text)
           let incLevel  = DerivedLevel  "inc" (notEq color text)
           let conFactor = Factor "congruent?"  [conLevel, incLevel]
 
           let nTrials = 4
-
+-- TODO for the love of god subprocess calls
           let design = [color, text, conFactor]
           contents <- readFile "ex.res"
         --  fileName <- getLine

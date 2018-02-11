@@ -29,8 +29,19 @@ dataStructureTests = testGroup "DataStructure Tests" [helperTests]
 ---------------------------------------------------------------------------------------------------------------
 -- FRONT END TESTS
 
+color = Factor "color" [Level "red", Level "blue"]
+text  = Factor "text"  [Level "red", Level "blue"]
+conLevel  = DerivedLevel  "con" (Derivation (==) color text)
+incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
+conFactor = Factor "congruent?"  [conLevel, incLevel]
+design    = [color, text, conFactor]
 
-
+hlDerivationTests = testGroup "hl derivation test"
+  [ testCase "running derivation example" $
+      makeHLDerivation color design  @?=  []
+  , testCase "non-derivation example" $
+      makeHLDerivation conFactor design  @?=  [HLDerivation [[0,2],[1,3]] 4,HLDerivation [[0,3],[1,2]] 5]
+  ]
 
 oneHotTests = testGroup "one hot tests"
   [ testCase "empty edgecase" $
@@ -70,7 +81,7 @@ hltoilTests = testGroup "hl to il variable allocation tests"
   [ testCase "running example" $
       evalState (allocateVars testHLBlock) emptyState
         @?= testILBlock
-  ,  testCase "not fullyCrossed example" $
+  , testCase "not fullyCrossed example" $
       evalState (allocateVars notFullyCrossedTestHLBlock) emptyState
         @?= notFullyCrossedTestILBlock
   ]

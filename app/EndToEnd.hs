@@ -6,6 +6,10 @@ import CodeGen
 import DataStructures
 
 
+--
+-- fifteenLetters :: Int -> String -> Bool
+-- fifteenLetters n text = length text > n
+
 
 main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
@@ -13,16 +17,16 @@ main = putStrLn (showDIMACS cnf nVars)
     color = Factor "color" [Level "red", Level "blue"]
     text  = Factor "text"  [Level "red", Level "blue"]
 
-    --conLevel  = DerivedLevel  "con" (Derivation (==) color text)
-    --incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
+    -- conLevel  = DerivedLevel  "con" (Derivation (==) color text)
+    -- incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
     conLevel  = DerivedLevel  "con" (equal color text)
     incLevel  = DerivedLevel  "inc" (notEq color text)
     conFactor = Factor "congruent?"  [conLevel, incLevel]
 
     design       = [color, text, conFactor]
 
-    -- k = 1
-    -- constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
+    k = 0
+    constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
 
     crossing     = [0, 1]
     block        = fullyCrossedBlock design crossing [] --constraints
