@@ -25,11 +25,11 @@ main = putStrLn (showDIMACS cnf nVars)
 
     design       = [color, text, conFactor]
 
-    k = 0
+    k = 2
     constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
 
     crossing     = [0, 1]
-    block        = fullyCrossedBlock design crossing [] --constraints
+    block        = fullyCrossedBlock design crossing constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment
 
