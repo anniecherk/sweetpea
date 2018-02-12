@@ -25,7 +25,7 @@ main = putStrLn (showDIMACS cnf nVars)
 
     design       = [color, text, conFactor]
 
-    k = 2
+    k = 1 
     constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
 
     crossing     = [0, 1]
@@ -36,10 +36,6 @@ main = putStrLn (showDIMACS cnf nVars)
 
 
 
-    -- sameLevels :: Factor -> Factor -> Bool
-    -- sameLevels (Level a) (Level b) = a == b
-    -- sameLevels a@(Factor _ children) (Level b) = or $ map sameLevels children b  -- true if any are true
-    -- sameLevels a@(Factor _) b@(Factor )
 
     -- color = Factor "color" [Level "red", Level "blue", Level "green"]
     -- shape = Factor "shape" [Level "circle", Level "square"]

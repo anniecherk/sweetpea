@@ -6,6 +6,7 @@ module FrontEnd
 , crossedFactors, cross
 , getLeafNames
 , iffDerivations
+, getVarsByName, slidingWindow
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
 --
@@ -272,7 +273,7 @@ desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint
 desugarConstraint (HLDerivation toBind index) inBlock = iffDerivations toBind index inBlock
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
-desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k k level inBlock
+desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k (k+1) level inBlock
 desugarConstraint (NoMoreThanKeveryJ k j level) inBlock = return $ noMoreThanInRange k j level inBlock
 desugarConstraint (AtLeastKInARow k level) inBlock = return $ noFewerThanInRange k k level inBlock
 desugarConstraint (AtLeastKeveryJ k j level) inBlock = return $ noFewerThanInRange k j level inBlock
