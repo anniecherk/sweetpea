@@ -39,6 +39,39 @@ data Trial = Trial { numFields :: Int -- fields are one-hot encoded levels
 data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deriving(Show)
 
 
+
+data Logic = And [Logic] | Or [Logic] | Not Logic | Var Int
+
+-- ignoring the last three cases: https://www.cs.jhu.edu/~jason/tutorials/convert-to-CNF.html
+toCNF :: Logic -> Logic
+toCNF (Var x) = Var x
+toCNF (And ps) = And $ map toCNF ps -- I think this is the right interpretation here
+toCNF (Not (Var x)) = Var (-1*x)
+toCNF (Not (Not x)) = toCNF x -- double negation
+-- If φ has the form ~(P ^ Q), then return CONVERT(~P v ~Q).
+toCNF (Not (And ps)) = toCNF $ Or $ map Not ps
+-- If φ has the form ~(P v Q), then return CONVERT(~P ^ ~Q).
+toCNF (Not (Or ps)) = toCNF $ And $ map Not ps
+toCNF (Or [p]) = And [Or [p]]
+toCNF (Or (p:ps)) = undefined -- slightly complicated bc the result isn't always an *explicit* and of ors-- will need to fix this
+  where convertedHead = toCNF p
+        convertedClauses = map toCNF ps
+
+
+
+-- If φ has the form P v Q, then:
+--    CONVERT(P) must have the form P1 ^ P2 ^ ... ^ Pm, and
+--    CONVERT(Q) must have the form Q1 ^ Q2 ^ ... ^ Qn,
+--    where all the Pi and Qi are dijunctions of literals.
+--    So we need a CNF formula equivalent to
+--       (P1 ^ P2 ^ ... ^ Pm) v (Q1 ^ Q2 ^ ... ^ Qn).
+--    So return (P1 v Q1) ^ (P1 v Q2) ^ ... ^ (P1 v Qn)
+--            ^ (P2 v Q1) ^ (P2 v Q2) ^ ... ^ (P2 v Qn)
+--              ...
+--            ^ (Pm v Q1) ^ (Pm v Q2) ^ ... ^ (Pm v Qn)
+
+
+
 ------------------------------------------------------------------
 ---------- Helpful State Abstractions ----------------------------
 
