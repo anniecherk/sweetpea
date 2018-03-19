@@ -25,8 +25,8 @@ import Text.Read (readMaybe)
 import Control.Monad
 import StatefulCompiler
 
-import Data.Logic.Propositional
-import Data.Logic.Propositional.NormalForms
+-- import Data.Logic.Propositional
+-- import Data.Logic.Propositional.NormalForms
 
 
 
@@ -47,7 +47,8 @@ type Design = [HLLabelTree]
 data HLLabelTree = Ignore -- this is a dummy variable for sequence specifications
                  | Factor String [HLLabelTree]
                  | Level String
-                 | DerivedLevel String Derivation deriving (Show, Eq)
+                 | DerivedLevel String Derivation
+                 | CrossTrialLevel Int String Derivation deriving (Show, Eq)
               --   | Transition HLLabelTree
 
 -- user defined function between all combos of the levels of the two factors
@@ -73,6 +74,7 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
                    | HLDerivation [[Int]] Int -- indices of the dependent levels & own index
+                   | HLTransition [[Int]] Int
                    | FullyCross deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
 -- we can rederive # reps by looking at numTrials & the design
@@ -145,6 +147,9 @@ getLeafNames  Ignore = []
 -- goes through and pulls out HL constraints for any derived factors, if any exist
 processDerivations :: Design -> [HLConstraint]
 processDerivations design = concatMap (`makeHLDerivation` design) design
+
+processTransitions :: Design -> [HLConstraint]
+processTransitions design = undefined
 
 
 
@@ -234,7 +239,10 @@ crossedFactors factors = map (\x -> factors !! x)
 -- constructor which gloms on consistency constraint to HLBlocks
 -- also checks for Derived Levels & adds correct derivation constraints
 makeBlock :: Int -> Design -> [Int] -> [HLConstraint] -> HLBlock
-makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs (processDerivations des ++ (Consistency : consts))
+makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs constraints
+  where derivationConstraints = processDerivations des
+        transitionConstraints = processTransitions des
+        constraints = transitionConstraints ++ derivationConstraints ++ (Consistency : consts)
 
 
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
@@ -322,7 +330,6 @@ llfullyCross block@(ILBlock numTrials _ _ design crossingIdxs _) = do
   stateVars <- getNFresh (numTrials * numStates) -- #1 --debug: stateVars = [1 ..numTrials*numStates]
   let states = chunkify stateVars numStates
   let transposedStates = transpose states -- transpose so that we 1-hot each of "the same" state
--- ANNIE I AM HERE
   let levels = getShapedOnlyCrossedLevels block --BUG: THIS ISN'T CORRECT WHEN DESIGN != CROSSING
   let entanglements = concatMap (uncurry entangleFC) $ zip states levels
   let entangleConstraints = map (uncurry Entangle) entanglements -- #2
@@ -359,6 +366,7 @@ iffDerivations toBind index inBlock = do -- State Monad
                       let allDependencies = do -- this is equivalent to `map (\is -> map (currTrial !!) is) toBind`
                                               is <- toBind -- grab a single index from the list of indices to bind
                                               return $ map (currTrial !!) is
+                      -- return (Biconditional (Variable $ Var derivedVar))
                       return (derivedVar, allDependencies)
         iffWithDNFList iteration
         return []

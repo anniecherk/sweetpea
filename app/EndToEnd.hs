@@ -15,21 +15,19 @@ main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
   where
     color = Factor "color" [Level "red", Level "blue"]
-    text  = Factor "text"  [Level "red", Level "blue"]
+    text  = Factor "text"  [Level "yes", Level "no"  ]
 
-    -- conLevel  = DerivedLevel  "con" (Derivation (==) color text)
-    -- incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
-    conLevel  = DerivedLevel  "con" (equal color text)
-    incLevel  = DerivedLevel  "inc" (notEq color text)
-    conFactor = Factor "congruent?"  [conLevel, incLevel]
+    stride = 2
+    repeatLevel = CrossTrialLevel "repeat" stride (==) [color, color] --[color, Ignore, color]
+    switchLevel = CrossTrialLevel "switch" stride (/=) [color, color]
+    transitionFactor = Factor "transition" [repeatLevel, switchLevel]
 
-    design       = [color, text, conFactor]
+    design       = [color, text, transitionFactor]
 
-    k = 1 
-    constraints = [NoMoreThanKInARow k ["congruent?", "con"]]
+    -- constraints = [Balance transitionFactor]
 
     crossing     = [0, 1]
-    block        = fullyCrossedBlock design crossing constraints
+    block        = fullyCrossedBlock design crossing [] --constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment
 
