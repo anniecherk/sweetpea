@@ -6,6 +6,7 @@ module FrontEnd
 , crossedFactors, cross
 , getLeafNames
 , iffDerivations
+, iffWithDNFList
 , getVarsByName, slidingWindow
 , countLeaves, totalLeavesInDesign, allocateVars, ilBlockToLLBlocks, desugarConstraint
 , llfullyCross, entangleFC, chunkify, trialConsistency, getTrialVars, getShapedLevels
@@ -23,6 +24,9 @@ import Control.Monad.Trans.State
 import Text.Read (readMaybe)
 import Control.Monad
 import StatefulCompiler
+
+import Data.Logic.Propositional
+import Data.Logic.Propositional.NormalForms
 
 
 
@@ -92,9 +96,9 @@ data ILBlock = ILBlock { ilnumTrials   :: Int
 
 -------------------------
 -- The "Low Level" representation turns constraints into actionable commands
-data LLConstraint = AssertEq Int [Var] | AssertLt Int [Var]
-                  | AssertGt Int [Var] | OneHot [Var]
-                  | Entangle Var [Var] deriving(Show, Eq)
+data LLConstraint = AssertEq Int [DataStructures.Var] | AssertLt Int [DataStructures.Var]
+                  | AssertGt Int [DataStructures.Var] | OneHot [DataStructures.Var]
+                  | Entangle DataStructures.Var [DataStructures.Var] deriving(Show, Eq)
 
 
 -- the low level AST is just a list of "commands" to execute
@@ -340,6 +344,7 @@ trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency block = map OneHot allLevelPairs
   where allLevelPairs = concat $ getShapedLevels block
 
+-- this is the IL => LL translation for "derived" factors
 -- sample the block at the toBind indicies, and entangle each of those w/ index
 -- example:
 -- inBlock = (ILBlock 3 8 25 design [0, 1, 2] [])
@@ -357,6 +362,11 @@ iffDerivations toBind index inBlock = do -- State Monad
                       return (derivedVar, allDependencies)
         iffWithDNFList iteration
         return []
+
+
+
+
+
 
 
 -- This takes a list of tuples of the form (a, xs) where xs is a DNF (OR of ANDS) formatted list
@@ -460,7 +470,7 @@ label inList design nTrials = unlines $ map unwords $ chunkify selectedVarNames 
 -- asserts that only one of the list can be true
 -- (a and -b and -c) or (-a and b and c) or (-a and -b and c)... but in CNF
 -- which is: (a or b or c) and (-a or -b) and (-b or -c) and (-a or -c)
-enforceOneHot :: [Var] -> State (Count, CNF) ()
+enforceOneHot :: [DataStructures.Var] -> State (Count, CNF) ()
 enforceOneHot inList = do appendCNF [inList] -- this appends (a or b or c)
                           appendCNF $ not_pairs inList -- appends the (-a or -b) and (-b or -c) etc pairs
   where not_pairs xs = nub [[-x, -y] | x <- xs, y <- xs, x < y]

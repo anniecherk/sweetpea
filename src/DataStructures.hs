@@ -4,7 +4,9 @@
 module DataStructures
 ( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..), Trial(..)
 , emptyState, initState, getFresh, getNFresh, putFresh, appendCNF, zeroOut, setToOne, setToZero
-, distribute, xNorCNF, xorCNF, nAndCNF, andCNF, aDoubleImpliesList, doubleImplies, aDoubleImpliesBandC )
+, distribute, xNorCNF, xorCNF, nAndCNF, andCNF, aDoubleImpliesList, doubleImplies, aDoubleImpliesBandC
+-- , Logic(..), toCNF
+)
 where
 
 import Control.Monad.Trans.State
@@ -40,23 +42,25 @@ data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deri
 
 
 
-data Logic = And [Logic] | Or [Logic] | Not Logic | Var Int
+-- data Logic = And Logic Logic | Or Logic Logic | Not Logic | Var Int | If Logic Logic | Iff Logic Logic
 
 -- ignoring the last three cases: https://www.cs.jhu.edu/~jason/tutorials/convert-to-CNF.html
-toCNF :: Logic -> Logic
-toCNF (Var x) = Var x
-toCNF (And ps) = And $ map toCNF ps -- I think this is the right interpretation here
-toCNF (Not (Var x)) = Var (-1*x)
-toCNF (Not (Not x)) = toCNF x -- double negation
--- If φ has the form ~(P ^ Q), then return CONVERT(~P v ~Q).
-toCNF (Not (And ps)) = toCNF $ Or $ map Not ps
--- If φ has the form ~(P v Q), then return CONVERT(~P ^ ~Q).
-toCNF (Not (Or ps)) = toCNF $ And $ map Not ps
-toCNF (Or [p]) = And [Or [p]]
-toCNF (Or (p:ps)) = undefined -- slightly complicated bc the result isn't always an *explicit* and of ors-- will need to fix this
-  where convertedHead = toCNF p
-        convertedClauses = map toCNF ps
-
+-- toCNF :: Logic -> State (Count, CNF) ()
+-- toCNF (Var x) = Var x
+-- toCNF (And p q) = And (toCNF p) (toCNF q)
+-- toCNF (Not (Var x)) = Var (-1*x)
+-- toCNF (Not (Not x)) = toCNF x -- double negation
+-- -- If φ has the form ~(P ^ Q), then return CONVERT(~P v ~Q).
+-- toCNF (Not (And p q)) = Or (Not p) (Not q)
+-- -- If φ has the form ~(P v Q), then return CONVERT(~P ^ ~Q).
+-- toCNF (Not (Or p q)) = And (Not p) (Not q)
+-- toCNF (Or p@(Var _) q) = toCNF q
+--   | length ps == 1 = undefined
+--   | otherwise      = undefined -- either exponential or must be in fresh monad
+--   where convertedClauses = map toCNF ps
+-- toCNF (Or p q) = undefined
+-- toCNF (If p q) = toCNF $ Or (Not p) q
+-- toCNF (Iff p q) = toCNF $ Or (And p q) (And (Not p) (Not q))
 
 
 -- If φ has the form P v Q, then:
