@@ -15,6 +15,7 @@ module FrontEnd
 -- multiFullyCrossSize
 , leafNamesInDesign, indexOfLevel, getMatchIdxs
 , makeHLDerivation, processDerivations
+, chunkByWidthAndStride
 , synthesizeTrials, decode )
 where
 
@@ -48,7 +49,8 @@ data HLLabelTree = Ignore -- this is a dummy variable for sequence specification
                  | Factor String [HLLabelTree]
                  | Level String
                  | DerivedLevel String Derivation
-                 | CrossTrialLevel Int String Derivation deriving (Show, Eq)
+                 -- width, stride, name, derivation
+                 | CrossTrialLevel Int Int String Derivation deriving (Show, Eq)
               --   | Transition HLLabelTree
 
 -- user defined function between all combos of the levels of the two factors
@@ -73,7 +75,7 @@ data HLConstraint =  NoMoreThanKInARow Int [String]  --HLSet
                    | ExactlyKeveryJ Int Int [String]  --HLSet
                    | Balance HLLabelTree
                    | Consistency
-                   | HLDerivation [[Int]] Int -- indices of the dependent levels & own index
+                   | HLDerivation Int Int [[Int]] Int -- width, stride, indices of the dependent levels & own index
                    | HLTransition [[Int]] Int
                    | FullyCross deriving(Show, Eq)
 -- "MultiFullyCross" is fully specified by just having a block with rep * sizefullycross trials
@@ -148,8 +150,8 @@ getLeafNames  Ignore = []
 processDerivations :: Design -> [HLConstraint]
 processDerivations design = concatMap (`makeHLDerivation` design) design
 
-processTransitions :: Design -> [HLConstraint]
-processTransitions design = undefined
+-- processTransitions :: Design -> [HLConstraint]
+-- processTransitions design = undefined
 
 
 
@@ -174,10 +176,12 @@ makeHLDerivation = go []
   -- don't care about non-derived levels & ignores
         go _ (Level _) _ = []
         go _ Ignore    _ = []
+        go parName (CrossTrialLevel width stride name (Derivation func factA factB)) design = undefined
         go parName (DerivedLevel name (Derivation func factA factB)) design =
           -- this first call filters the crossing of levels of those two factors to those which satisfy func
           -- the second call gets the index of the derivedLevel
-          [HLDerivation (getMatchIdxs design factA factB func)
+          -- set stride = 1, width = 1 for derived transitions
+          [HLDerivation 1 1 (getMatchIdxs design factA factB func)
                         (indexOfLevel (parName ++ [name]) design)]
 
 
@@ -241,8 +245,8 @@ crossedFactors factors = map (\x -> factors !! x)
 makeBlock :: Int -> Design -> [Int] -> [HLConstraint] -> HLBlock
 makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs constraints
   where derivationConstraints = processDerivations des
-        transitionConstraints = processTransitions des
-        constraints = transitionConstraints ++ derivationConstraints ++ (Consistency : consts)
+        -- transitionConstraints = processTransitions des
+        constraints = derivationConstraints ++ (Consistency : consts)
 
 
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
@@ -282,7 +286,7 @@ ilBlockToLLBlocks block@(ILBlock _ _ _ _ _ constraints) = concatMapM (`desugarCo
 
 
 desugarConstraint :: HLConstraint -> ILBlock -> State (Count, CNF) [LLConstraint]
-desugarConstraint (HLDerivation toBind index) inBlock = iffDerivations toBind index inBlock
+desugarConstraint (HLDerivation width stride toBind index) inBlock = iffDerivations width stride toBind index inBlock
 desugarConstraint Consistency inBlock = return $ trialConsistency inBlock
 desugarConstraint FullyCross  inBlock = llfullyCross inBlock
 desugarConstraint (NoMoreThanKInARow k level) inBlock = return $ noMoreThanInRange k (k+1) level inBlock
@@ -354,14 +358,21 @@ trialConsistency block = map OneHot allLevelPairs
 -- this is the IL => LL translation for "derived" factors
 -- sample the block at the toBind indicies, and entangle each of those w/ index
 -- example:
+-- color = Factor "color" [Level "red", Level "blue"]
+-- text  = Factor "text"  [Level "red", Level "blue"]
+-- conLevel  = DerivedLevel  "con" (Derivation (==) color text)
+-- incLevel  = DerivedLevel  "inc" (Derivation (/=) color text)
+-- conFactor = Factor "congruent?"  [conLevel, incLevel]
+-- design       = [color, text, conFactor]
 -- inBlock = (ILBlock 3 8 25 design [0, 1, 2] [])
 -- iffDerivations [[0, 2], [1, 3]] 4 inBlock  @?=
 --    Entangle 12 [8,10],Entangle 12 [9,11],Entangle 18 [14,16],Entangle 18 [15,17],Entangle 24 [20,22],Entangle 24 [21,23]]
-iffDerivations :: [[Int]] -> Int -> ILBlock -> State (Count, CNF) [LLConstraint]
-iffDerivations toBind index inBlock = do -- State Monad
+iffDerivations :: Int -> Int -> [[Int]] -> Int -> ILBlock -> State (Count, CNF) [LLConstraint]
+iffDerivations width stride toBind index inBlock = do -- State Monad
         let allVars = map concat $ getShapedLevels inBlock
+        let chunkedVars = chunkByWidthAndStride width stride allVars
         let iteration = do -- list monad!!
-                      currTrial <- allVars -- grab a single trial from the list of trial vars
+                      currTrial <- chunkedVars -- grab a single trial from the list of trial vars
                       let derivedVar = currTrial !! index
                       let allDependencies = do -- this is equivalent to `map (\is -> map (currTrial !!) is) toBind`
                                               is <- toBind -- grab a single index from the list of indices to bind
@@ -372,8 +383,18 @@ iffDerivations toBind index inBlock = do -- State Monad
         return []
 
 
-
-
+-- shapedVars = [[8,9,10,11,12,13],[14,15,16,17,18,19],[20,21,22,23,24,25]]
+-- chunkByWidthAndStride 1 1 shapedVars @?=
+--     [[8,9,10,11,12,13],[14,15,16,17,18,19],[20,21,22,23,24,25]]
+-- chunkByWidthAndStride 1 2 shapedVars @?=
+--     [[8,9,10,11,12,13],[20,21,22,23,24,25]]
+-- chunkByWidthAndStride 2 1 shapedVars @?=
+--     [[8,9,10,11,12,13,14,15,16,17,18,19],[14,15,16,17,18,19,20,21,22,23,24,25]]
+chunkByWidthAndStride :: Int -> Int -> [[Int]] -> [[Int]]
+chunkByWidthAndStride width stride [] = []
+chunkByWidthAndStride width stride shapedVars
+  | length shapedVars < width = []
+  | otherwise                 = concat (take width shapedVars) : chunkByWidthAndStride width stride (drop stride shapedVars)
 
 
 
