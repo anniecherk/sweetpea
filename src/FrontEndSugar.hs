@@ -9,10 +9,10 @@ import FrontEnd
 import DataStructures
 import Data.List ((\\))
 
-equal :: HLLabelTree -> HLLabelTree -> Derivation
+equal :: (HLLabelTree, Int) -> (HLLabelTree, Int) -> Derivation
 equal = Derivation (==)
 
-notEq :: HLLabelTree -> HLLabelTree -> Derivation
+notEq :: (HLLabelTree, Int) -> (HLLabelTree, Int) -> Derivation
 notEq = Derivation (/=)
 
 fullyCrossedBlock :: Design -> [Int] -> [HLConstraint] -> HLBlock

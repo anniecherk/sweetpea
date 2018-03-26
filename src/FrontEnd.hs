@@ -65,9 +65,9 @@ data HLLabelTree = Ignore -- this is a dummy variable for sequence specification
 
 
 -- user defined function between all combos of the levels of the two factors
-data Derivation = Derivation (String -> String -> Bool) [(HLLabelTree, Int)]
+data Derivation = Derivation (String -> String -> Bool) (HLLabelTree, Int) (HLLabelTree, Int)
 instance Show Derivation where
-    show (Derivation func factors) = "Derivation" ++ show factors
+    show (Derivation func factA factB) = "Derivation" ++ show factA ++ show factB
 instance Eq Derivation where
     Derivation {} == Derivation {} = False --TODO: might want to fix this, but for now, don't do equality over derived factors
 
@@ -158,8 +158,8 @@ getLeafNames  Ignore = []
 
 
 -- goes through and pulls out HL constraints for any derived factors, if any exist
-processDerivations :: Design -> [HLConstraint]
-processDerivations design = concatMap (`makeHLDerivation` design) design
+processDerivations :: Design -> [Int] -> [HLConstraint]
+processDerivations design crossing = concatMap (\x -> makeHLDerivation x design crossing) design
 
 -- processTransitions :: Design -> [HLConstraint]
 -- processTransitions design = undefined
@@ -177,22 +177,22 @@ processDerivations design = concatMap (`makeHLDerivation` design) design
 -- design       = [color, text, conFactor]
 -- makeHLDerivation color design  @?=  []
 -- makeHLDerivation conFactor design  @?=  [HLDerivation [[0,2],[1,3]] 4,HLDerivation [[0,3],[1,2]] 5]
-makeHLDerivation :: HLLabelTree -> Design -> [HLConstraint]
+makeHLDerivation :: HLLabelTree -> Design -> [Int] -> [HLConstraint]
 makeHLDerivation = go []
-  where go :: [String] -> HLLabelTree -> Design -> [HLConstraint]
+  where go :: [String] -> HLLabelTree -> Design -> [Int] -> [HLConstraint]
   -- case: top-level factor, start off the name train
-        go [] (Factor name children) design = concatMap (\x -> go [name] x design) children
+        go [] (Factor name children) design c = concatMap (\x -> go [name] x design c) children
   -- case: nested factor, just add a name & keep going
-        go parName (Factor name children) design = concatMap (\x -> go (parName ++ [name]) x design) children
+        go parName (Factor name children) design c = concatMap (\x -> go (parName ++ [name]) x design c) children
   -- don't care about non-derived levels & ignores
-        go _ (Level _) _ = []
-        go _ Ignore    _ = []
-        go parName (DerivedLevel name width stride (Derivation func factors)) design = undefined
+        go _ (Level _) _ _ = []
+        go _ Ignore    _ _ = []
+        go parName (DerivedLevel name width stride (Derivation func factA factB)) design crossing =
           -- this first call filters the crossing of levels of those two factors to those which satisfy func
           -- the second call gets the index of the derivedLevel
           -- set stride = 1, width = 1 for derived transitions
-          -- [HLDerivation 1 1 (getMatchIdxs design factA factB func)
-          --                   (indexOfLevel (parName ++ [name]) design)]
+          [HLDerivation width stride (getMatchIdxs width design crossing factA factB func)
+                                     (indexOfLevel (parName ++ [name]) design)]
 
 
 cross :: [a] -> [a] -> [(a,a)]
@@ -211,10 +211,13 @@ cross a b = [(x,y) | (x:ys) <- tails a, y <- b]
 -- factB = Factor "text" [Level "red",Level "blue"]
 -- getMatchIdxs 1 design factA factB (==)  @?=  [[0,2],[1,3]]
 -- getMatchIdxs 1 design factA factB (/=)  @?=  [[0,3],[1,2]]
-getMatchIdxs :: Int -> Design -> HLLabelTree -> HLLabelTree -> (String -> String -> Bool) -> [[Int]]
-getMatchIdxs width design factA factB func = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
+getMatchIdxs :: Int -> Design -> [Int] -> (HLLabelTree, Int) -> (HLLabelTree, Int) -> (String -> String -> Bool) -> [[Int]]
+getMatchIdxs width design crossing (factA, idxA) (factB, idxB) func = map (\x -> [head x + idxA*trialSize, (x!!1) + idxB*trialSize]) unshiftedIdxs
   where combos = cross (getLeafNames factA) (getLeafNames factB)
         matches = filter (\(x,y) -> func (last x) (last y)) combos
+        unshiftedIdxs = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
+        trialSize = fullyCrossSize design crossing
+
 
 
 
@@ -254,7 +257,7 @@ crossedFactors factors = map (\x -> factors !! x)
 -- also checks for Derived Levels & adds correct derivation constraints
 makeBlock :: Int -> Design -> [Int] -> [HLConstraint] -> HLBlock
 makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs constraints
-  where derivationConstraints = processDerivations des
+  where derivationConstraints = processDerivations des crossidxs
         -- transitionConstraints = processTransitions des
         constraints = derivationConstraints ++ (Consistency : consts)
 
