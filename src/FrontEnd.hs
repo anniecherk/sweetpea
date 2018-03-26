@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances, MultiWayIf #-}
+
 module FrontEnd
 ( Design(..), HLAST(..), HLLabelTree(..), HLConstraint(..), Derivation(..)
 -- for testing
@@ -16,7 +18,8 @@ module FrontEnd
 , leafNamesInDesign, indexOfLevel, getMatchIdxs
 , makeHLDerivation, processDerivations
 , chunkByWidthAndStride
-, synthesizeTrials, decode )
+, synthesizeTrials, decode
+, (~>),  (<%))
 where
 
 import Data.List (transpose, nub, find, sortBy, groupBy, tails)
@@ -28,6 +31,15 @@ import StatefulCompiler
 
 -- import Data.Logic.Propositional
 -- import Data.Logic.Propositional.NormalForms
+
+
+-- TEMP!
+(~>) :: HLLabelTree -> Int -> HLLabelTree
+(~>) _ _ = undefined
+
+(<%) :: HLLabelTree -> Int -> HLLabelTree
+(<%) _ _ = undefined
+
 
 
 
@@ -48,15 +60,14 @@ type Design = [HLLabelTree]
 data HLLabelTree = Ignore -- this is a dummy variable for sequence specifications
                  | Factor String [HLLabelTree]
                  | Level String
-                 | DerivedLevel String Derivation
-                 -- width, stride, name, derivation
-                 | CrossTrialLevel Int Int String Derivation deriving (Show, Eq)
-              --   | Transition HLLabelTree
+                 | DerivedLevel String Int Int Derivation deriving (Show, Eq)
+                           -- name, width, stride, derivation
+
 
 -- user defined function between all combos of the levels of the two factors
-data Derivation = Derivation (String -> String -> Bool) HLLabelTree HLLabelTree
+data Derivation = Derivation (String -> String -> Bool) [(HLLabelTree, Int)]
 instance Show Derivation where
-    show (Derivation func factA factB) = "Derivation" ++ show factA ++ show factB
+    show (Derivation func factors) = "Derivation" ++ show factors
 instance Eq Derivation where
     Derivation {} == Derivation {} = False --TODO: might want to fix this, but for now, don't do equality over derived factors
 
@@ -119,7 +130,7 @@ synthesizeTrials ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 countLeaves :: HLLabelTree -> Int
 countLeaves (Factor _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
 countLeaves (Level _) = 1
-countLeaves (DerivedLevel _ _) = 1 --idk...
+countLeaves DerivedLevel{} = 1 --idk...
 countLeaves  Ignore = 0
 
 -- reports number of leaf nodes in full design (just a list of trees)
@@ -141,7 +152,7 @@ leafNamesInDesign = concatMap getLeafNames
 getLeafNames :: HLLabelTree -> [[String]]
 getLeafNames (Factor name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
 getLeafNames (Level name) = [[name]]
-getLeafNames (DerivedLevel name _) = [[name]]
+getLeafNames (DerivedLevel name _ _ _) = [[name]]
 getLeafNames  Ignore = []
 -- getLeafNames (Transition factor) = undefined -- map (("abc"++) . (concat)) [["def", "asd"], ["bgr"]]
 
@@ -176,13 +187,12 @@ makeHLDerivation = go []
   -- don't care about non-derived levels & ignores
         go _ (Level _) _ = []
         go _ Ignore    _ = []
-        go parName (CrossTrialLevel width stride name (Derivation func factA factB)) design = undefined
-        go parName (DerivedLevel name (Derivation func factA factB)) design =
+        go parName (DerivedLevel name width stride (Derivation func factors)) design = undefined
           -- this first call filters the crossing of levels of those two factors to those which satisfy func
           -- the second call gets the index of the derivedLevel
           -- set stride = 1, width = 1 for derived transitions
-          [HLDerivation 1 1 (getMatchIdxs design factA factB func)
-                        (indexOfLevel (parName ++ [name]) design)]
+          -- [HLDerivation 1 1 (getMatchIdxs design factA factB func)
+          --                   (indexOfLevel (parName ++ [name]) design)]
 
 
 cross :: [a] -> [a] -> [(a,a)]
@@ -199,10 +209,10 @@ cross a b = [(x,y) | (x:ys) <- tails a, y <- b]
 --
 -- factA = Factor "color" [Level "red",Level "blue"]
 -- factB = Factor "text" [Level "red",Level "blue"]
--- getMatchIdx factA factB (==)  @?=  [0,2],[1,3]]
--- getMatchIdxs design factA factB (/=)  @?=  [[0,3],[1,2]]
-getMatchIdxs :: Design -> HLLabelTree -> HLLabelTree -> (String -> String -> Bool) -> [[Int]]
-getMatchIdxs design factA factB func = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
+-- getMatchIdxs 1 design factA factB (==)  @?=  [[0,2],[1,3]]
+-- getMatchIdxs 1 design factA factB (/=)  @?=  [[0,3],[1,2]]
+getMatchIdxs :: Int -> Design -> HLLabelTree -> HLLabelTree -> (String -> String -> Bool) -> [[Int]]
+getMatchIdxs width design factA factB func = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
   where combos = cross (getLeafNames factA) (getLeafNames factB)
         matches = filter (\(x,y) -> func (last x) (last y)) combos
 
