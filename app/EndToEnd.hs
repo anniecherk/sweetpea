@@ -6,66 +6,58 @@ import CodeGen
 import DataStructures
 
 
---
--- fifteenLetters :: Int -> String -> Bool
--- fifteenLetters n text = length text > n
-
 
 main :: IO ()
 main = putStrLn (showDIMACS cnf nVars)
   where
-    color = Factor "color" [Level "red", Level "blue"]
-    text  = Factor "text"  [Level "yes", Level "no"  ]
+    response     = Factor "response" [Level "left", Level "right"]
+    task         = Factor "task" [Level "color-task", Level "motion-task"]
+    color        = Factor "color" [Level "blue", Level "red"]
+    motion       = Factor "motion" [Level "up", Level "down"]
+    correlation  = Factor "correlation" [Level "correlated", Level "uncorrelated"]
+    congruency   = Factor "congruency" [Level "incongruent", Level "congruent"]
+    irrelevantFeatureTransition = Factor "irrelevant-feature-transition"
+                                    [Level "repeat", Level "switch"]
+    -- miniblock_size = Factor("miniblock_size", [4, 5, 6])
 
-    stride = 2
-    repeatLevel = CrossTrialLevel "repeat" stride (==) [color, color] --[color, Ignore, color]
-    switchLevel = CrossTrialLevel "switch" stride (/=) [color, color]
-    transitionFactor = Factor "transition" [repeatLevel, switchLevel]
+    -- stimulus is color + motion
+    -- RESPONSE
+    -- if color task, then response is left if color is blue, right if color is red
+    -- if motion tsk, then response is left if motion is up,  right if motion is down
 
-    design       = [color, text, transitionFactor]
+    -- CONGRUENCY
+    -- congruent if (motion is up && color is blue) or (motion is down && color is red)
+    -- incngruent if (motion is up && color is red) or (motion is down && color is blue)
 
-    -- constraints = [Balance transitionFactor]
+    -- Irrelvant feature transition : can't be counterbalanced (shouldn't be able to)
+    -- repeat if ((task == color) && motion[1] == motion[0])
+    --        or ((task == motion) && color[1] == color[0])
+    -- switch is the opposite
 
-    crossing     = [0, 1]
-    block        = fullyCrossedBlock design crossing [] --constraints
+
+    responseTransition = Factor "response-transition"
+                          [ transition "repeat" $ Derivation (==) (response, 0) (response, 1)
+                          , transition "switch" $ Derivation (/=) (response, 0) (response, 1)]
+
+    taskTransition = Factor "task_transition"
+                          [ transition "repeat" $ Derivation (==) (task, 0) (task, 1)
+                          , transition "switch" $ Derivation (/=) (task, 0) (task, 1)]
+
+
+    design       = [ task, taskTransition
+                   , response, responseTransition
+                   , correlation, congruency
+                   , irrelevantFeatureTransition
+                   , color, motion
+                   ]
+-- no more than 7 in a row: task & also response
+    constraints = [ NoMoreThanKInARow 7 ["task", "color-task"]
+                  , NoMoreThanKInARow 7 ["task", "motion-task"] ]
+
+                  -- crossing 4 factors (0 through 3) takes about 30 seconds
+                  -- crossing 5 factors (0 through 4) takes about
+
+    crossing     = [0, 1, 2, 3, 4, 5, 6]
+    block        = fullyCrossedBlock design crossing [] -- constraints
     experiment   = [block]
     (nVars, cnf) = synthesizeTrials experiment
-
-
-
-
-
-    -- color = Factor "color" [Level "red", Level "blue", Level "green"]
-    -- shape = Factor "shape" [Level "circle", Level "square"]
-    -- size  = Factor "size"  [Level "small",  Level "big"]
-
-
--- transitions
--- colorTransitions = Transition color
--- constraints  = [Balance colorTransitions]
-
--- # block combinators:
--- #  sequence combinators:
--- #    sequence / randomWithReplacement / permutations
--- #    repeat
--- #  mix
--- #  optional # at random add this block, or don't    # null blocks
---
--- # block filler : what's in it?
--- #  sample / fully cross
---
--- # block builder :
--- #  exactly
-
-
-
-
-
-
--- SMALLER EXAMPLE
-          -- let color = NTNode "color" [LeafNode "red", LeafNode "blue"]
-          --           let design = [color]
-          --           let block = makeBlock (fullyCrossSize design) [color] [FullyCross]
-          --           let ast = [block]
-          --           let (nVars, cnf) = runExperiment ast
-          --           putStrLn $ showDIMACS cnf nVars
