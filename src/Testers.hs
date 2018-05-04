@@ -58,7 +58,7 @@ testFullAdderDIMACS = map (`showDIMACS` 5) testFullAdderConstraints
 -- s SATISFIABLE
 -- v a b c_in c s 0
 solnFullAdder :: [String]                        -- this formats the list to be space sep'd
-solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl (\acc x-> acc ++ " " ++ show x) "" (computeSolnFullAdder x 4 5)) ++ " 0\n") allInputs
+solnFullAdder = map (\x -> "s SATISFIABLE\nv " ++ tail (foldl' (\acc x-> acc ++ " " ++ show x) "" (computeSolnFullAdder x 4 5)) ++ " 0\n") allInputs
   where allInputs = sequence [[1, -1], [2, -2], [3, -3]] -- generates all 8 input combos (in counting order)
 
 
@@ -144,7 +144,7 @@ popCountCorrectHuh inList setVars resVars
   | otherwise = WrongResult nSetBits resSetBits
   where nSetBits = sum $ map (\x -> if x < 0 then 0 else 1) $ take setVars inList
         resBools = map ((> 0) . (inList !!) . subtract 1) resVars
-        resSetBits = foldl (\acc bit -> if bit then acc*2+1 else acc*2) 0 resBools
+        resSetBits = foldl' (\acc bit -> if bit then acc*2+1 else acc*2) 0 resBools
 
 
 

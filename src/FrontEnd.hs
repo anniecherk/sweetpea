@@ -22,7 +22,7 @@ module FrontEnd
 )
 where
 
-import Data.List (transpose, nub, find, sortBy, groupBy, tails)
+import Data.List (transpose, nub, find, sortBy, groupBy, tails, foldl')
 import DataStructures
 import Control.Monad.Trans.State
 import Text.Read (readMaybe)
@@ -119,14 +119,14 @@ synthesizeTrials ast = execState (hlToIl ast >>= ilToll >>= buildCNF) emptyState
 -- reports number of leaf nodes in tree
 -- ie, countLeaves (color, (ltcolor, (red, blue)), (dkcolor, (blue, blue))) == 4
 countLeaves :: HLLabelTree -> Int
-countLeaves (Factor _ children) = foldl (\acc x -> acc + countLeaves x) 0 children
+countLeaves (Factor _ children) = foldl' (\acc x -> acc + countLeaves x) 0 children
 countLeaves (Level _) = 1
 countLeaves DerivedLevel{} = 1 --idk...
 countLeaves  Ignore = 0
 
 -- reports number of leaf nodes in full design (just a list of trees)
 totalLeavesInDesign :: Design -> Int
-totalLeavesInDesign = foldl (\acc x -> acc + countLeaves x) 0
+totalLeavesInDesign = foldl' (\acc x -> acc + countLeaves x) 0
 
 
 -- flattened version:
@@ -141,7 +141,7 @@ leafNamesInDesign :: Design -> [[String]]
 leafNamesInDesign = concatMap getLeafNames
 
 getLeafNames :: HLLabelTree -> [[String]]
-getLeafNames (Factor name children) = foldl (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
+getLeafNames (Factor name children) = foldl' (\acc x -> acc ++ [name : head (getLeafNames x)]) [] children
 getLeafNames (Level name) = [[name]]
 getLeafNames (DerivedLevel name _ _ _) = [[name]]
 getLeafNames  Ignore = []
@@ -256,7 +256,7 @@ makeBlock numTs des crossidxs consts = HLBlock numTs des crossidxs constraints
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
 fullyCrossSize :: Design -> [Int] -> Int
 fullyCrossSize factors crossingIdxs = numStates
-  where numStates = foldl (\acc x -> acc * countLeaves x) 1 $ crossedFactors factors crossingIdxs
+  where numStates = foldl' (\acc x -> acc * countLeaves x) 1 $ crossedFactors factors crossingIdxs
 
 -- HACK
 -- only tells you the NUMBER of TRIALS (which is the product of all the factor sizes)
@@ -423,7 +423,7 @@ iffWithDNFList todo = do --state monad
 -- ie getTrialVars 1 [2, 2] => [[1, 2], [3, 4]]
 -- getTrialVars 8 [3, 2, 2] => [[8,9,10],[11,12],[13,14]]
 getTrialVars :: Int -> [Int] -> [[Int]]
-getTrialVars start trialShape = reverse $ snd $ foldl (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
+getTrialVars start trialShape = reverse $ snd $ foldl' (\(count, acc) x-> (count+x, [count..(count+x-1)]:acc)) (start, []) trialShape
 
 -- TODO: todo: move to unit tests...
 -- NOTE: THIS VERSION WORKS FOR **ALL** FACTORS, NOT JUST THE ONES IN THE CROSSING
