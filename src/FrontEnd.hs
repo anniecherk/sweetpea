@@ -19,7 +19,7 @@ module FrontEnd
 , makeHLDerivation, processDerivations
 , chunkByWidthAndStride
 , synthesizeTrials, decode
-, (~>),  (<%))
+)
 where
 
 import Data.List (transpose, nub, find, sortBy, groupBy, tails)
@@ -27,19 +27,10 @@ import DataStructures
 import Control.Monad.Trans.State
 import Text.Read (readMaybe)
 import Control.Monad
-import StatefulCompiler
+import SweetPeaCore
 
 -- import Data.Logic.Propositional
 -- import Data.Logic.Propositional.NormalForms
-
-
--- TEMP!
-(~>) :: HLLabelTree -> Int -> HLLabelTree
-(~>) _ _ = undefined
-
-(<%) :: HLLabelTree -> Int -> HLLabelTree
-(<%) _ _ = undefined
-
 
 
 
@@ -216,7 +207,7 @@ getMatchIdxs width design crossing (factA, idxA) (factB, idxB) func = map (\x ->
   where combos = cross (getLeafNames factA) (getLeafNames factB)
         matches = filter (\(x,y) -> func (last x) (last y)) combos
         unshiftedIdxs = map (\(x,y) -> [indexOfLevel x design, indexOfLevel y design]) matches
-        trialSize = fullyCrossSize design crossing
+        trialSize = totalLeavesInDesign design
 
 
 
@@ -239,7 +230,7 @@ getMatchIdxs width design crossing (factA, idxA) (factB, idxB) func = map (\x ->
 indexOfLevel :: [String] -> Design -> Int
 indexOfLevel target design = case result of
                                 Just value -> snd value
-                                Nothing    -> error "That isn't a valid level!"
+                                Nothing    -> error $ "That isn't a valid level! target: " ++ show target
     where result = find (\x-> fst x == target) $ zip (leafNamesInDesign design) [0..]
 
 -- returns the indices of all variables that match a particular level

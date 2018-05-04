@@ -4,35 +4,19 @@ import FrontEnd
 import FrontEndSugar
 
 main :: IO ()
-main = do let task         = Factor "task" [Level "color-task", Level "motion-task"]
-          let response     = Factor "response" [Level "left", Level "right"]
-          let color        = Factor "color" [Level "blue", Level "red"]
-          let motion       = Factor "motion" [Level "up", Level "down"]
-          let correlation  = Factor "correlation" [Level "correlated", Level "uncorrelated"]
-          let congruency   = Factor "congruency" [Level "incongruent", Level "congruent"]
-          let irrelevantFeatureTransition = Factor "irrelevant-feature-transition" [Level "low", Level "high"]
-    -- miniblock_size = Factor("miniblock_size", [4, 5, 6])
+main = do let color = Factor "color" [Level "red  |", Level "blue |"]
+          let text  = Factor "text"  [Level "red  |", Level "blue |"]
+          let width = 2
+          let stride = 1
+          let conLevel  = DerivedLevel "con" width stride (Derivation (==) (color,0) (text,0))
+          let incLevel  = DerivedLevel "inc" width stride (Derivation (/=) (color,0) (text,0))
+          -- conLevel  = DerivedLevel  "con" (equal color text)
+          -- incLevel  = DerivedLevel  "inc" (notEq color text)
+          let conFactor = Factor "congruent?"  [conLevel, incLevel]
 
-          let responseTransition = Factor "response-transition"
-                          [ transition "repeat" $ Derivation (==) (response, 0) (response, 1)
-                          , transition "switch" $ Derivation (/=) (response, 0) (response, 1)]
-
-
-          let taskTransition = Factor "task_transition"
-                          [ transition "repeat" $ Derivation (==) (task, 0) (task, 1)
-                          , transition "switch" $ Derivation (/=) (task, 0) (task, 1)]
-
-
-          let design = [ task, taskTransition
-                   , response, responseTransition
-                   , correlation, congruency
-                   , irrelevantFeatureTransition
-                   , color, motion
-                   ]
-
+          let design       = [color, text, conFactor]
 
           let nTrials = 4
-
 
           contents <- readFile "ex.res"
         --  fileName <- getLine

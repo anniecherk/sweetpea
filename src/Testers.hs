@@ -23,7 +23,7 @@ import Control.Monad
 import Control.Monad.Trans.State
 
 import DataStructures
-import StatefulCompiler
+import SweetPeaCore
 import CodeGen
 
 

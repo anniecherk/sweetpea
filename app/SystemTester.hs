@@ -5,7 +5,7 @@ import System.Directory
 import Data.Char
 import Data.List.Split
 
-import StatefulCompiler
+import SweetPeaCore
 import Testers
 import DataStructures
 

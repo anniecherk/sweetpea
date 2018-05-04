@@ -1,4 +1,4 @@
-module StatefulCompiler
+module SweetPeaCore
 ( emptyState, initState
 , assertKofN, kLessThanN, kGreaterThanN
 , halfAdder, fullAdder, rippleCarry, popCount)

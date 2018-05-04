@@ -2,12 +2,26 @@ module FrontEndSugar
 ( fullyCrossedBlock -- , multiFullyCrossedBlock
 , equal
 , notEq
+, transition
 , remove )
 where
 
 import FrontEnd
 import DataStructures
 import Data.List ((\\))
+
+
+
+
+transition :: String -> Derivation -> HLLabelTree
+transition name = DerivedLevel name width stride
+  where width = 2
+        stride = 1
+
+quality :: String -> Derivation -> HLLabelTree
+quality name = DerivedLevel name width stride
+  where width = 1
+        stride = 1
 
 equal :: (HLLabelTree, Int) -> (HLLabelTree, Int) -> Derivation
 equal = Derivation (==)

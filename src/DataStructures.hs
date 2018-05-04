@@ -5,7 +5,7 @@ module DataStructures
 ( Count, Var, Index, CNF, SATResult(..), CountingConstraint(..), Trial(..)
 , emptyState, initState, getFresh, getNFresh, putFresh, appendCNF, zeroOut, setToOne, setToZero
 , distribute, xNorCNF, xorCNF, nAndCNF, andCNF, aDoubleImpliesList, doubleImplies, aDoubleImpliesBandC
--- , Logic(..), toCNF
+, Logic(..) -- , toCNF
 )
 where
 
@@ -42,10 +42,10 @@ data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deri
 
 
 
--- data Logic = And Logic Logic | Or Logic Logic | Not Logic | Var Int | If Logic Logic | Iff Logic Logic
+data Logic = And Logic Logic | Or Logic Logic | Not Logic | Var Int | If Logic Logic | Iff Logic Logic
 
--- ignoring the last three cases: https://www.cs.jhu.edu/~jason/tutorials/convert-to-CNF.html
--- toCNF :: Logic -> State (Count, CNF) ()
+
+-- toCNF :: Logic -> Logic --State (Count, CNF) ()
 -- toCNF (Var x) = Var x
 -- toCNF (And p q) = And (toCNF p) (toCNF q)
 -- toCNF (Not (Var x)) = Var (-1*x)
@@ -62,6 +62,8 @@ data SATResult = Correct | Unsatisfiable | WrongResult Int Int | ParseError deri
 -- toCNF (If p q) = toCNF $ Or (Not p) q
 -- toCNF (Iff p q) = toCNF $ Or (And p q) (And (Not p) (Not q))
 
+processQ :: Logic -> Logic -> Logic
+processQ (And q0 q1) pVar = And (Or q0 pVar) (processQ q1 pVar) --TODO: is this the only thing it can be?
 
 -- If φ has the form P v Q, then:
 --    CONVERT(P) must have the form P1 ^ P2 ^ ... ^ Pm, and
