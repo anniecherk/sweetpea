@@ -359,6 +359,9 @@ trialConsistency :: ILBlock -> [LLConstraint]
 trialConsistency block = map OneHot allLevelPairs
   where allLevelPairs = concat $ getShapedLevels block
 
+
+-- BUG: WARNING: THIS MUST BE CHANGED TO A GENERAL TOCNF FUNCTION! THIS GENERALIZATION IS WRONG
+--     THE TEST CASE FOR THIS BUG IS FULLY CROSSING W/ 3+ LEVELS
 -- this is the IL => LL translation for "derived" factors
 -- sample the block at the toBind indicies, and entangle each of those w/ index
 -- example:
